@@ -4,10 +4,11 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class SpringSecurityJwtApplication {
+public class BFI_TradingApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(SpringSecurityJwtApplication.class, args);
+
+		SpringApplication.run(BFIBackApplication.class, args);
 	}
 
 }

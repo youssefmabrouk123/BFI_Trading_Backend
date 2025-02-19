@@ -1,4 +1,4 @@
-package com.twd.SpringSecurityJWT.entity;
+package com.twd.BfiTradingApplication.entity;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -11,8 +11,8 @@ import java.util.List;
 
 @Data
 @Entity
-@Table(name = "ourusers")
-public class OurUsers implements UserDetails {
+@Table(name = "users")
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

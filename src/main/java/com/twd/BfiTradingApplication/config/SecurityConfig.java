@@ -1,6 +1,6 @@
 package com.twd.SpringSecurityJWT.config;
 
-import com.twd.SpringSecurityJWT.service.OurUserDetailsService;
+import com.twd.SpringSecurityJWT.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -23,7 +23,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     @Autowired
-    private OurUserDetailsService ourUserDetailsService;
+    private UserService userService;
     @Autowired
     private JWTAuthFIlter jwtAuthFIlter;
 
@@ -46,7 +46,7 @@ public class SecurityConfig {
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
-        daoAuthenticationProvider.setUserDetailsService(ourUserDetailsService);
+        daoAuthenticationProvider.setUserDetailsService(userService);
         daoAuthenticationProvider.setPasswordEncoder(passwordEncoder());
         return daoAuthenticationProvider;
     }

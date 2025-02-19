@@ -1,13 +1,9 @@
 package com.twd.SpringSecurityJWT.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.twd.SpringSecurityJWT.entity.OurUsers;
-import com.twd.SpringSecurityJWT.entity.Product;
+import com.twd.SpringSecurityJWT.entity.User;
 import lombok.Data;
-
-import java.util.List;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -24,6 +20,5 @@ public class ReqRes {
     private String email;
     private String role;
     private String password;
-    private List<Product> products;
-    private OurUsers ourUsers;
+    private User user;
 }

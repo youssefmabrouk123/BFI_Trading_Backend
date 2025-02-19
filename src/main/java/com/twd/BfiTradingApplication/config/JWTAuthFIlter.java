@@ -1,7 +1,7 @@
 package com.twd.SpringSecurityJWT.config;
 
 import com.twd.SpringSecurityJWT.service.JWTUtils;
-import com.twd.SpringSecurityJWT.service.OurUserDetailsService;
+import com.twd.SpringSecurityJWT.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,7 +23,7 @@ public class JWTAuthFIlter extends OncePerRequestFilter {
     @Autowired
     private JWTUtils jwtUtils;
     @Autowired
-    private OurUserDetailsService ourUserDetailsService;
+    private UserService userService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -37,7 +37,7 @@ public class JWTAuthFIlter extends OncePerRequestFilter {
         jwtToken = authHeader.substring(7);
         userEmail = jwtUtils.extractUsername(jwtToken);
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = ourUserDetailsService.loadUserByUsername(userEmail);
+            UserDetails userDetails = userService.loadUserByUsername(userEmail);
 
             if (jwtUtils.isTokenValid(jwtToken, userDetails)) {
                 SecurityContext securityContext = SecurityContextHolder.createEmptyContext();
