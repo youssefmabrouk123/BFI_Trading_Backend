@@ -1,7 +1,7 @@
-package com.twd.SpringSecurityJWT.controller;
+package com.twd.BfiTradingApplication.controller;
 
-import com.twd.SpringSecurityJWT.dto.ReqRes;
-import com.twd.SpringSecurityJWT.service.AuthService;
+import com.twd.BfiTradingApplication.dto.ReqRes;
+import com.twd.BfiTradingApplication.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

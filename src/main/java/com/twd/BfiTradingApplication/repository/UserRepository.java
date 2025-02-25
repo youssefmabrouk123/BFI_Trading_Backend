@@ -1,6 +1,6 @@
-package com.twd.SpringSecurityJWT.repository;
+package com.twd.BfiTradingApplication.repository;
 
-import com.twd.SpringSecurityJWT.entity.User;
+import com.twd.BfiTradingApplication.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;

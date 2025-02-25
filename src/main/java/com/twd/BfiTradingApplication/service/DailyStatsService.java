@@ -1,4 +1,8 @@
 package com.twd.BfiTradingApplication.service;
 
-public class DailyStatsService {
+import com.twd.BfiTradingApplication.entity.Quote;
+
+public interface DailyStatsService {
+
+    void updateDailyStatsFromQuote(Quote quote);
 }

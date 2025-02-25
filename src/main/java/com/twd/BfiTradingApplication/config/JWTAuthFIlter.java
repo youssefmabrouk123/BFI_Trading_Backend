@@ -1,7 +1,7 @@
-package com.twd.SpringSecurityJWT.config;
+package com.twd.BfiTradingApplication.config;
 
-import com.twd.SpringSecurityJWT.service.JWTUtils;
-import com.twd.SpringSecurityJWT.service.UserService;
+import com.twd.BfiTradingApplication.service.JWTUtils;
+import com.twd.BfiTradingApplication.service.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

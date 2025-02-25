@@ -1,8 +1,8 @@
-package com.twd.SpringSecurityJWT.dto;
+package com.twd.BfiTradingApplication.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.twd.SpringSecurityJWT.entity.User;
+import com.twd.BfiTradingApplication.entity.User;
 import lombok.Data;
 
 @Data

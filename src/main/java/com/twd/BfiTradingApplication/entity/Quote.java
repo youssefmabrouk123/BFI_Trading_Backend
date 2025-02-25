@@ -1,4 +1,5 @@
-package com.twd.SpringSecurityJWT.entity;
+package com.twd.BfiTradingApplication.entity;
+
 
 
 import jakarta.persistence.*;
@@ -7,7 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "quotes")
+@Table(name = "quote")
 public class Quote {
 
     @Id

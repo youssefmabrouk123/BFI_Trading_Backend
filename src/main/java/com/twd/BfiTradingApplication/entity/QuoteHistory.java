@@ -1,18 +1,14 @@
-package com.twd.SpringSecurityJWT.entity;
-
+package com.twd.BfiTradingApplication.entity;
 
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "quote_histories")
+@Table(name = "quote_historie")
 public class QuoteHistory {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer pk;
+    @EmbeddedId
+    private QuoteHistoryId pk;
 
     @Column(precision = 19, scale = 4)
     private BigDecimal bidPrice;
@@ -29,33 +25,30 @@ public class QuoteHistory {
     @Column(precision = 19, scale = 4)
     private BigDecimal percentageVar;
 
-    private LocalDateTime quoteTime;
-
-
-    // Relation Many-to-One avec CrossParity
     @ManyToOne
     @JoinColumn(name = "cross_parity_id")
     private CrossParity crossParity;
 
     // Constructeurs
-    public QuoteHistory() {
-    }
+    public QuoteHistory() {}
 
-    public QuoteHistory(BigDecimal bidPrice, BigDecimal askPrice, BigDecimal spread, BigDecimal netVar, BigDecimal percentageVar, LocalDateTime quoteTime) {
+    public QuoteHistory(QuoteHistoryId pk, BigDecimal bidPrice, BigDecimal askPrice, BigDecimal spread,
+                        BigDecimal netVar, BigDecimal percentageVar, CrossParity crossParity) {
+        this.pk = pk;
         this.bidPrice = bidPrice;
         this.askPrice = askPrice;
         this.spread = spread;
         this.netVar = netVar;
         this.percentageVar = percentageVar;
-        this.quoteTime = quoteTime;
+        this.crossParity = crossParity;
     }
 
     // Getters & Setters
-    public Integer getPk() {
+    public QuoteHistoryId getPk() {
         return pk;
     }
 
-    public void setPk(Integer pk) {
+    public void setPk(QuoteHistoryId pk) {
         this.pk = pk;
     }
 
@@ -98,15 +91,6 @@ public class QuoteHistory {
     public void setPercentageVar(BigDecimal percentageVar) {
         this.percentageVar = percentageVar;
     }
-
-    public LocalDateTime getQuoteTime() {
-        return quoteTime;
-    }
-
-    public void setQuoteTime(LocalDateTime quoteTime) {
-        this.quoteTime = quoteTime;
-    }
-
 
     public CrossParity getCrossParity() {
         return crossParity;
