@@ -56,6 +56,9 @@ public class CrossParity {
     @Column(nullable = false)
     private boolean favorite = false;
 
+    @Column(nullable = false)
+    private boolean active = true;
+
     public boolean isFavorite() {
         return favorite;
     }
@@ -83,6 +86,14 @@ public class CrossParity {
         this.quoteCurrency = quoteCurrency;
         this.rate = rate;
 
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
     }
 
     // Getters & Setters

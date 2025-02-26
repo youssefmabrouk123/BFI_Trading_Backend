@@ -32,7 +32,8 @@ public class AuthServiceImpl implements AuthService {
             User user = new User();
             user.setEmail(registrationRequest.getEmail());
             user.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
-            user.setRole(registrationRequest.getRole());
+            user.setFirstName(registrationRequest.getFirstName());
+            user.setLastName(registrationRequest.getLastName());
             User ourUserResult = userRepository.save(user);
             if (ourUserResult != null && ourUserResult.getId() > 0) {
                 resp.setUser(ourUserResult);
@@ -85,4 +86,5 @@ public class AuthServiceImpl implements AuthService {
         }
         return response;
     }
+
 }
