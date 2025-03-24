@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 @Service
@@ -77,16 +78,31 @@ public class CSVUploadService {
                     continue;
                 }
                 String[] columns = line.split(",");
-                if (columns.length >= 3) {
+                if (columns.length >= 4) {
                     String description = columns[0].trim();
                     String identifier = columns[1].trim();
-                    Double rate = Double.parseDouble(columns[2].trim());
+
+                    double rate;
+                    BigDecimal quotity;
+                    try {
+                        rate = Double.parseDouble(columns[2].trim());
+                        quotity = new BigDecimal(columns[3].trim());
+
+                        if (quotity.compareTo(BigDecimal.ZERO) <= 0) {
+                            System.err.println("Invalid quotity value (must be > 0) for: " + identifier);
+                            continue;
+                        }
+                    } catch (NumberFormatException e) {
+                        System.err.println("Invalid number format in line: " + line);
+                        continue;
+                    }
 
                     String[] parts = identifier.split("/");
                     if (parts.length != 2) {
                         System.err.println("Invalid cross-parity identifier format: " + identifier);
                         continue;
                     }
+
                     String baseCode = parts[0].trim();
                     String quoteCode = parts[1].trim();
 
@@ -94,21 +110,29 @@ public class CSVUploadService {
                     Optional<Currency> quoteCurrencyOpt = currencyRepository.findByIdentifier(quoteCode);
 
                     if (baseCurrencyOpt.isPresent() && quoteCurrencyOpt.isPresent()) {
+                        Currency baseCurrency = baseCurrencyOpt.get();
+                        Currency quoteCurrency = quoteCurrencyOpt.get();
+
+                        // Adjust rate based on quotity
+                      //  double adjustedRate = rate / quotity.doubleValue();
+
                         if (!crossParityRepository.existsByIdentifier(identifier)) {
                             CrossParity crossParity = new CrossParity(
                                     description,
                                     identifier,
-                                    baseCurrencyOpt.get(),
-                                    quoteCurrencyOpt.get(),
-                                    rate
+                                    baseCurrency,
+                                    quoteCurrency,
+                                    rate,
+                                    quotity
                             );
                             crossParityRepository.save(crossParity);
-                            System.out.println("Saved new CrossParity: " + identifier);
+                            System.out.println("Saved new CrossParity: " + identifier + " with  rate: " + rate);
                         } else {
                             System.out.println("CrossParity already exists: " + identifier);
                         }
                     } else {
-                        System.err.println("Missing currency for cross-parity " + identifier + " - base: " + baseCode + ", quote: " + quoteCode);
+                        System.err.println("Missing currency for cross-parity " + identifier +
+                                " - base: " + baseCode + ", quote: " + quoteCode);
                     }
                 } else {
                     System.err.println("Invalid cross-parity line: " + line);

@@ -1,150 +1,137 @@
-    package com.twd.BfiTradingApplication.entity;
+package com.twd.BfiTradingApplication.entity;
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 
-    import jakarta.persistence.*;
-    import lombok.Data;
+@Entity
+@Table(name = "position")
+public class Position {
 
-    import java.math.BigDecimal;
-    import java.time.LocalDateTime;
-    @Data
-    @Entity
-    @Table(name = "position")
-    public class Position {
-        @Id
-        @GeneratedValue(strategy = GenerationType.IDENTITY)
-        private Integer pk;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer pk;
 
-        @Column(nullable = false)
-        private Double openPrice;
+    // The currency pair (e.g., USDJPY)
+    @ManyToOne
+    @JoinColumn(name = "cross_parity_id", nullable = false)
+    private CrossParity crossParity;
 
-        @Column
-        private Double currentPrice;
+    // Status of the position (e.g., OPEN, CLOSED)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private PositionStatus status;
 
-        @Column(nullable = false)
-        private Double volume;
+    // Direction of the trade: true for Long, false for Short
+    @Column(nullable = false)
+    private boolean isLong;
 
-        @Enumerated(EnumType.STRING)
-        @Column(nullable = false)
-        private PositionType type;
+    // Net quantity of the base currency (positive for long, negative for short)
+    @Column(nullable = false)
+    private Integer quantity;
 
-        @Enumerated(EnumType.STRING)
-        @Column(nullable = false)
-        private PositionStatus status;
+    // Average price at which the position was opened
+    @Column(precision = 19, scale = 4, nullable = false)
+    private BigDecimal openPrice;
 
-        @Column(nullable = false)
-        private LocalDateTime openDate;
+    // Timestamp when the position was first opened
+    @Column(nullable = false)
+    private LocalDateTime openTime;
 
-        private LocalDateTime closeDate;
+    // Price at which the position was closed
+    @Column(precision = 19, scale = 4)
+    private BigDecimal closePrice;
 
-        @Column
-        private Double profitLoss;
+    // Timestamp when the position was closed
+    @Column
+    private LocalDateTime closeTime;
 
-        @Column
-        private Double stopLoss;
+    // Realized profit/loss on closed positions
+    @Column(precision = 19, scale = 4)
+    private BigDecimal realizedProfitLoss;
 
-        @Column
-        private Double takeProfit;
 
-        @ManyToOne
-        @JoinColumn(name = "cross_parity_id", nullable = false)
-        private CrossParity crossParity;
+    @OneToMany(mappedBy = "position")
+    private List<TransactionCurrency> transactionCurrencies;
 
-        // Constructeur par défaut
-        public Position() {}
-
-        // Getters et Setters
-        public Integer getPk() {
-            return pk;
-        }
-
-        public void setPk(Integer pk) {
-            this.pk = pk;
-        }
-
-        public Double getOpenPrice() {
-            return openPrice;
-        }
-
-        public void setOpenPrice(Double openPrice) {
-            this.openPrice = openPrice;
-        }
-
-        public Double getCurrentPrice() {
-            return currentPrice;
-        }
-
-        public void setCurrentPrice(Double currentPrice) {
-            this.currentPrice = currentPrice;
-        }
-
-        public Double getVolume() {
-            return volume;
-        }
-
-        public void setVolume(Double volume) {
-            this.volume = volume;
-        }
-
-        public PositionType getType() {
-            return type;
-        }
-
-        public void setType(PositionType type) {
-            this.type = type;
-        }
-
-        public PositionStatus getStatus() {
-            return status;
-        }
-
-        public void setStatus(PositionStatus status) {
-            this.status = status;
-        }
-
-        public LocalDateTime getOpenDate() {
-            return openDate;
-        }
-
-        public void setOpenDate(LocalDateTime openDate) {
-            this.openDate = openDate;
-        }
-
-        public LocalDateTime getCloseDate() {
-            return closeDate;
-        }
-
-        public void setCloseDate(LocalDateTime closeDate) {
-            this.closeDate = closeDate;
-        }
-
-        public Double getProfitLoss() {
-            return profitLoss;
-        }
-
-        public void setProfitLoss(Double profitLoss) {
-            this.profitLoss = profitLoss;
-        }
-
-        public Double getStopLoss() {
-            return stopLoss;
-        }
-
-        public void setStopLoss(Double stopLoss) {
-            this.stopLoss = stopLoss;
-        }
-
-        public Double getTakeProfit() {
-            return takeProfit;
-        }
-
-        public void setTakeProfit(Double takeProfit) {
-            this.takeProfit = takeProfit;
-        }
-
-        public CrossParity getCrossParity() {
-            return crossParity;
-        }
-
-        public void setCrossParity(CrossParity crossParity) {
-            this.crossParity = crossParity;
-        }
+    // Getters and Setters
+    public Integer getPk() {
+        return pk;
     }
+
+    public void setPk(Integer pk) {
+        this.pk = pk;
+    }
+
+    public CrossParity getCrossParity() {
+        return crossParity;
+    }
+
+    public void setCrossParity(CrossParity crossParity) {
+        this.crossParity = crossParity;
+    }
+
+    public PositionStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(PositionStatus status) {
+        this.status = status;
+    }
+
+    public boolean isLong() {
+        return isLong;
+    }
+
+    public void setLong(boolean isLong) {
+        this.isLong = isLong;
+    }
+
+    public Integer getQuantity() {
+        return quantity;
+    }
+
+    public void setQuantity(Integer quantity) {
+        this.quantity = quantity;
+    }
+
+    public BigDecimal getOpenPrice() {
+        return openPrice;
+    }
+
+    public void setOpenPrice(BigDecimal openPrice) {
+        this.openPrice = openPrice;
+    }
+
+    public LocalDateTime getOpenTime() {
+        return openTime;
+    }
+
+    public void setOpenTime(LocalDateTime openTime) {
+        this.openTime = openTime;
+    }
+
+    public BigDecimal getClosePrice() {
+        return closePrice;
+    }
+
+    public void setClosePrice(BigDecimal closePrice) {
+        this.closePrice = closePrice;
+    }
+
+    public LocalDateTime getCloseTime() {
+        return closeTime;
+    }
+
+    public void setCloseTime(LocalDateTime closeTime) {
+        this.closeTime = closeTime;
+    }
+
+    public BigDecimal getRealizedProfitLoss() {
+        return realizedProfitLoss;
+    }
+
+    public void setRealizedProfitLoss(BigDecimal realizedProfitLoss) {
+        this.realizedProfitLoss = realizedProfitLoss;
+    }
+}

@@ -30,4 +30,26 @@ public interface QuoteHistoryRepository extends JpaRepository<QuoteHistory, Quot
 
 
 
+    QuoteHistory findTopByCrossParityOrderByPkQuoteTimeDesc(CrossParity crossParity);
+
+//    aaaaa
+
+
+    @Query("SELECT qh FROM QuoteHistory qh WHERE qh.crossParity.pk = :parityId " +
+            "AND qh.pk.quoteTime BETWEEN :startTime AND :endTime " +
+            "ORDER BY qh.pk.quoteTime")
+    List<QuoteHistory> findByParityIdAndTimeRange(
+            @Param("parityId") Integer parityId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    @Query("SELECT qh FROM QuoteHistory qh WHERE qh.crossParity.pk = :parityId " +
+            "ORDER BY qh.pk.quoteTime DESC LIMIT :limit")
+    List<QuoteHistory> findLatestByParityId(
+            @Param("parityId") Integer parityId,
+            @Param("limit") int limit);
+
+//    aaaaa
+
+
 }

@@ -32,6 +32,9 @@ public class Quote {
 
     private LocalDateTime quoteTime;
 
+
+
+
     // Relation One-to-One avec CrossParity
     @OneToOne
     @JoinColumn(name = "cross_parity_id", unique = true)
@@ -41,7 +44,7 @@ public class Quote {
     public Quote() {
     }
 
-    public Quote(BigDecimal bidPrice, BigDecimal askPrice, BigDecimal spread, BigDecimal netVar, BigDecimal percentageVar, LocalDateTime quoteTime) {
+    public Quote(BigDecimal bidPrice, BigDecimal askPrice, BigDecimal spread, BigDecimal netVar, BigDecimal percentageVar, LocalDateTime quoteTime , BigDecimal quotity) {
         this.bidPrice = bidPrice;
         this.askPrice = askPrice;
         this.spread = spread;

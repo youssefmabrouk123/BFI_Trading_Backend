@@ -20,6 +20,9 @@
 
         private Integer nbrDec;
 
+        @OneToOne(mappedBy = "currency", cascade = CascadeType.ALL)
+        private CurrencyDetail detail;
+
         // Constructeurs
         public Currency() {
         }

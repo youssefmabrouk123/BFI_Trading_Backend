@@ -1,10 +1,10 @@
 package com.twd.BfiTradingApplication.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,6 +38,8 @@ public class CrossParity {
     @OneToMany(mappedBy = "crossParity", fetch = FetchType.EAGER)
     private List<DailyStats> dailyStats = new ArrayList<>();
 
+
+
     // Relation One-to-One avec Quote (quote instantanée)
     @OneToOne(mappedBy = "crossParity", cascade = CascadeType.ALL)
     @JsonIgnore
@@ -49,22 +51,39 @@ public class CrossParity {
     private List<QuoteHistory> quoteHistories = new ArrayList<>();
 
 
+    @Column(precision = 19, scale = 4, nullable = false)
+    private BigDecimal quotity;
+
+
+
     @Column(nullable = false)
     private Double rate; // Add rate field
+
 
 
     @Column(nullable = false)
     private boolean favorite = false;
 
-    @Column(nullable = false)
-    private boolean active = true;
+
+
+    @JsonIgnore
+    @OneToMany(mappedBy = "crossParity", cascade = CascadeType.ALL)
+    private List<Position> positions = new ArrayList<>();
 
     public boolean isFavorite() {
         return favorite;
     }
 
+
     public void setFavorite(boolean favorite) {
         this.favorite = favorite;
+    }
+    public List<Position> getPositions() {
+        return positions;
+    }
+
+    public void setPositions(List<Position> positions) {
+        this.positions = positions;
     }
 
     // Constructeurs
@@ -79,22 +98,17 @@ public class CrossParity {
         this.rate = rate;
     }
 
-    public CrossParity(String description, String identifier, Currency baseCurrency, Currency quoteCurrency, Double rate) {
+    public CrossParity(String description, String identifier, Currency baseCurrency, Currency quoteCurrency, Double rate ,BigDecimal quotity) {
         this.description = description;
         this.identifier = identifier;
         this.baseCurrency = baseCurrency;
         this.quoteCurrency = quoteCurrency;
         this.rate = rate;
+        this.quotity=quotity;
+
 
     }
 
-    public boolean isActive() {
-        return active;
-    }
-
-    public void setActive(boolean active) {
-        this.active = active;
-    }
 
     // Getters & Setters
     public Integer getPk() {
@@ -170,5 +184,13 @@ public class CrossParity {
     public void addQuoteHistory(QuoteHistory quoteHistory) {
         this.quoteHistories.add(quoteHistory);
         quoteHistory.setCrossParity(this);
+    }
+
+    public BigDecimal getQuotity() {
+        return quotity;
+    }
+
+    public void setQuotity(BigDecimal quotity) {
+        this.quotity = quotity;
     }
 }

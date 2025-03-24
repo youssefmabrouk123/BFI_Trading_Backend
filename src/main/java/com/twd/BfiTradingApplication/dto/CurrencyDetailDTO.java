@@ -1,27 +1,25 @@
 package com.twd.BfiTradingApplication.dto;
-
-
 import java.math.BigDecimal;
 
-
-// DTO to return position data with P/L
-
-public class PositionDTO {
-    private Integer id;
-    private String crossParityName;
-    private String status;
-    private String direction;
+public class CurrencyDetailDTO {
+    private String currency;
+    private String crossParity;
+    private Integer positionId;
+    private String role; // "Base" or "Quote"
+    private String direction; // "Long" or "Short"
     private Integer quantity;
     private BigDecimal openPrice;
     private BigDecimal currentPrice;
     private BigDecimal profitLoss;
 
-    public PositionDTO(Integer id, String crossParityName, String status, String direction,
-                       Integer quantity, BigDecimal openPrice, BigDecimal currentPrice,
-                       BigDecimal profitLoss) {
-        this.id = id;
-        this.crossParityName = crossParityName;
-        this.status = status;
+    // Constructor
+    public CurrencyDetailDTO(String currency, String crossParity, Integer positionId, String role,
+                             String direction, Integer quantity, BigDecimal openPrice,
+                             BigDecimal currentPrice, BigDecimal profitLoss) {
+        this.currency = currency;
+        this.crossParity = crossParity;
+        this.positionId = positionId;
+        this.role = role;
         this.direction = direction;
         this.quantity = quantity;
         this.openPrice = openPrice;
@@ -30,28 +28,36 @@ public class PositionDTO {
     }
 
     // Getters and setters
-    public Integer getId() {
-        return id;
+    public String getCurrency() {
+        return currency;
     }
 
-    public void setId(Integer id) {
-        this.id = id;
+    public void setCurrency(String currency) {
+        this.currency = currency;
     }
 
-    public String getCrossParityName() {
-        return crossParityName;
+    public String getCrossParity() {
+        return crossParity;
     }
 
-    public void setCrossParityName(String crossParityName) {
-        this.crossParityName = crossParityName;
+    public void setCrossParity(String crossParity) {
+        this.crossParity = crossParity;
     }
 
-    public String getStatus() {
-        return status;
+    public Integer getPositionId() {
+        return positionId;
     }
 
-    public void setStatus(String status) {
-        this.status = status;
+    public void setPositionId(Integer positionId) {
+        this.positionId = positionId;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
     }
 
     public String getDirection() {

@@ -9,7 +9,10 @@ import java.util.List;
 @Repository
 public interface CrossParityRepository extends JpaRepository<CrossParity, Integer> {
     boolean existsByIdentifier(String identifier);
-    List<CrossParity> findByActive(boolean active);
+    CrossParity findByIdentifier(String identifier);
+
+
+
 
 
 }
