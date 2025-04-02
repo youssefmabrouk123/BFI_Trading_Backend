@@ -66,9 +66,9 @@ public class CrossParity {
 
 
 
-    @JsonIgnore
-    @OneToMany(mappedBy = "crossParity", cascade = CascadeType.ALL)
-    private List<Position> positions = new ArrayList<>();
+//    @JsonIgnore
+//    @OneToMany(mappedBy = "crossParity", cascade = CascadeType.ALL)
+//    private List<Position> positions = new ArrayList<>();
 
     public boolean isFavorite() {
         return favorite;
@@ -78,13 +78,13 @@ public class CrossParity {
     public void setFavorite(boolean favorite) {
         this.favorite = favorite;
     }
-    public List<Position> getPositions() {
-        return positions;
-    }
+//    public List<Position> getPositions() {
+//        return positions;
+//    }
 
-    public void setPositions(List<Position> positions) {
-        this.positions = positions;
-    }
+//    public void setPositions(List<Position> positions) {
+//        this.positions = positions;
+//    }
 
     // Constructeurs
     public CrossParity() {

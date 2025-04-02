@@ -1,96 +1,16 @@
 package com.twd.BfiTradingApplication.dto;
 
 
+import lombok.Data;
+
 import java.math.BigDecimal;
 
 
-// DTO to return position data with P/L
-
+@Data
 public class PositionDTO {
-    private Integer id;
-    private String crossParityName;
-    private String status;
-    private String direction;
-    private Integer quantity;
-    private BigDecimal openPrice;
-    private BigDecimal currentPrice;
-    private BigDecimal profitLoss;
-
-    public PositionDTO(Integer id, String crossParityName, String status, String direction,
-                       Integer quantity, BigDecimal openPrice, BigDecimal currentPrice,
-                       BigDecimal profitLoss) {
-        this.id = id;
-        this.crossParityName = crossParityName;
-        this.status = status;
-        this.direction = direction;
-        this.quantity = quantity;
-        this.openPrice = openPrice;
-        this.currentPrice = currentPrice;
-        this.profitLoss = profitLoss;
-    }
-
-    // Getters and setters
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getCrossParityName() {
-        return crossParityName;
-    }
-
-    public void setCrossParityName(String crossParityName) {
-        this.crossParityName = crossParityName;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public String getDirection() {
-        return direction;
-    }
-
-    public void setDirection(String direction) {
-        this.direction = direction;
-    }
-
-    public Integer getQuantity() {
-        return quantity;
-    }
-
-    public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
-    }
-
-    public BigDecimal getOpenPrice() {
-        return openPrice;
-    }
-
-    public void setOpenPrice(BigDecimal openPrice) {
-        this.openPrice = openPrice;
-    }
-
-    public BigDecimal getCurrentPrice() {
-        return currentPrice;
-    }
-
-    public void setCurrentPrice(BigDecimal currentPrice) {
-        this.currentPrice = currentPrice;
-    }
-
-    public BigDecimal getProfitLoss() {
-        return profitLoss;
-    }
-
-    public void setProfitLoss(BigDecimal profitLoss) {
-        this.profitLoss = profitLoss;
-    }
+    private Integer pk;
+    private Integer currencyId; // Référence à l'ID de la devise
+    private String identifier;
+    private BigDecimal mntDev;
+    private BigDecimal besoinDev;
 }

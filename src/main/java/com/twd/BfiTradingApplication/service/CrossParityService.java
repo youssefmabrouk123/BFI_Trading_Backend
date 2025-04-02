@@ -74,7 +74,6 @@ public class CrossParityService {
     }
 
 
-//    aaaaaaaa
 
     public List<CrossParity> findAll() {
         return crossParityRepository.findAll();
@@ -93,7 +92,6 @@ public class CrossParityService {
         crossParityRepository.deleteById(id);
     }
 
-//    aaaaaaaa
 
 
 }

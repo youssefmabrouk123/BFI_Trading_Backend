@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Optional;
 
 
@@ -67,30 +66,4 @@ public class DailyStatsService {
 
         dailyStatsRepository.save(dailyStats);
     }
-
-
-
-
-
-
-//    aaaa
-
-    public List<DailyStats> findByParityIdAndDateRange(Integer parityId,
-                                                       LocalDate startDate,
-                                                       LocalDate endDate) {
-        return dailyStatsRepository.findByParityIdAndDateRange(parityId, startDate, endDate);
-    }
-
-    // For generating candlestick data with different timeframes
-    public List<DailyStats> findByParityIdLastNDays(Integer parityId, int days) {
-        LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(days);
-        return dailyStatsRepository.findByParityIdAndDateRange(parityId, startDate, endDate);
-    }
-
-    public DailyStats save(DailyStats dailyStats) {
-        return dailyStatsRepository.save(dailyStats);
-    }
-
-//    aaaa
 }

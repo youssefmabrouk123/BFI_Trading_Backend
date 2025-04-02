@@ -35,22 +35,5 @@ public class  QuoteHistoryService {
     }
 
 
-//    aaaaaa
 
-    public List<QuoteHistory> findByParityIdAndTimeRange(Integer parityId,
-                                                         LocalDateTime startTime,
-                                                         LocalDateTime endTime) {
-        return quoteHistoryRepository.findByParityIdAndTimeRange(parityId, startTime, endTime);
-    }
-
-    // For real-time chart updates (WebSocket could be used here instead)
-    public List<QuoteHistory> findLatestByParityId(Integer parityId, int limit) {
-        return quoteHistoryRepository.findLatestByParityId(parityId, limit);
-    }
-
-    public QuoteHistory save(QuoteHistory quoteHistory) {
-        return quoteHistoryRepository.save(quoteHistory);
-    }
-
-//    aaaaaa
 }

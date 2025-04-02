@@ -22,18 +22,6 @@ public interface DailyStatsRepository extends JpaRepository<DailyStats, Integer>
 
 
 
-//    aaaaaaa
-
-    @Query("SELECT ds FROM DailyStats ds WHERE ds.crossParity.pk = :parityId " +
-            "AND ds.date BETWEEN :startDate AND :endDate " +
-            "ORDER BY ds.date")
-    List<DailyStats> findByParityIdAndDateRange(
-            @Param("parityId") Integer parityId,
-            @Param("startDate") LocalDate startDate,
-            @Param("endDate") LocalDate endDate);
-
-//    aaaaaaa
-
 
 
 
