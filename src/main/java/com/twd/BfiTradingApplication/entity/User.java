@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -22,6 +23,16 @@ import java.util.List;
         private String email;
         private String password;
         private String role ="USER";
+
+        @ManyToMany
+        @JoinTable(
+                name = "user_favorite_cross_parity",
+                joinColumns = @JoinColumn(name = "user_id"),
+                inverseJoinColumns = @JoinColumn(name = "cross_parity_id")
+        )
+        private List<CrossParity> favoriteCrossParities = new ArrayList<>(); // Liste des favoris
+
+
         @Override
         public Collection<? extends GrantedAuthority> getAuthorities() {
             return List.of(new SimpleGrantedAuthority(role));

@@ -5,14 +5,18 @@ import com.twd.BfiTradingApplication.dto.PositionDTO;
 import com.twd.BfiTradingApplication.entity.Currency;
 import com.twd.BfiTradingApplication.entity.Position;
 import com.twd.BfiTradingApplication.entity.Transaction;
+import com.twd.BfiTradingApplication.entity.User;
 import com.twd.BfiTradingApplication.exception.TradingException;
 import com.twd.BfiTradingApplication.repository.CurrencyRepository;
 import com.twd.BfiTradingApplication.service.CurrencyService;
 import com.twd.BfiTradingApplication.service.TradingService;
 import com.twd.BfiTradingApplication.service.TransactionService;
+import com.twd.BfiTradingApplication.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -34,6 +38,9 @@ public class TradingController {
     @Autowired
     private CurrencyRepository currencyRepository;
 
+    @Autowired
+    private UserService userService;
+
 
     @PostMapping("/trade")
     public ResponseEntity<?> executeTrade(
@@ -42,6 +49,9 @@ public class TradingController {
             @RequestParam String transactionType,
             @RequestParam BigDecimal marketPrice) {
         try {
+
+            String userMail=getAuthenticatedUserEmail();
+            User user = userService.getUserByEmail(userMail);
             // Split crossParity into base and quote identifiers
             String[] currencies = crossParity.split("/");
             if (currencies.length != 2) {
@@ -61,7 +71,7 @@ public class TradingController {
 
             // Call the service with the extracted IDs
             Transaction transaction = tradingService.executeTrade(
-                    baseCurrencyId, quoteCurrencyId, mntAcht, transactionType, marketPrice);
+                   user.getId(), baseCurrencyId, quoteCurrencyId, mntAcht, transactionType, marketPrice);
 
             return ResponseEntity.ok().body(new ApiResponse(true,
                     String.format("Trade successful: %s %s of %s executed at market price %s.",
@@ -82,7 +92,9 @@ public class TradingController {
     public ResponseEntity<Void> setDailyNeeds(
             @RequestParam Integer currencyId,
             @RequestParam BigDecimal besoinDev) {
-        tradingService.setDailyNeeds(currencyId, besoinDev);
+        String userMail=getAuthenticatedUserEmail();
+        User user = userService.getUserByEmail(userMail);
+        tradingService.setDailyNeeds(currencyId, besoinDev, user);
         return ResponseEntity.ok().build();
     }
 
@@ -99,12 +111,33 @@ public class TradingController {
 
     @PostMapping("/bulk")
     public ResponseEntity<List<PositionDTO>> createPositions(@RequestBody List<PositionDTO> positionDTOs) {
-        List<PositionDTO> createdPositions = tradingService.createPositions(positionDTOs);
+        String userMail=getAuthenticatedUserEmail();
+        User user = userService.getUserByEmail(userMail);
+
+        List<PositionDTO> createdPositions = tradingService.createPositions(positionDTOs, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdPositions);
     }
 
     @GetMapping("/transactions")
     public List<Transaction> getAllTransactions() {
         return transactionService.getAllTransactions();
+    }
+
+
+//    @GetMapping
+//    public List<Transaction> getUserTransactions() {
+//        Integer userId = getAuthenticatedUserId();
+//        return tradingService.getTransactionsByUserId(userId);
+//    }
+    private Integer getAuthenticatedUserId() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+        User user = userService.getUserByEmail(email);
+        return user.getId();
+    }
+
+    private String getAuthenticatedUserEmail() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication.getName(); // Extract email from token
     }
 }

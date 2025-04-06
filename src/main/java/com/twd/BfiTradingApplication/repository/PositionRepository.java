@@ -17,4 +17,6 @@ public interface PositionRepository extends JpaRepository<Position, Integer> {
 
     @Query("SELECT COUNT(p) > 0 FROM Position p WHERE p.currency.pk = :currencyId")
     boolean existsByCurrencyId(@Param("currencyId") Integer currencyId);
+
+    List<Position> findByUserId(Integer userId); // Pour récupérer les positions d'un utilisateur
 }

@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface QuoteRepository extends JpaRepository<Quote, Integer> {
@@ -18,4 +19,13 @@ public interface QuoteRepository extends JpaRepository<Quote, Integer> {
 
     @Query("SELECT q FROM Quote q WHERE q.crossParity.pk = :parityId ORDER BY q.quoteTime DESC LIMIT 1")
     Quote findLatestByParityId(@Param("parityId") Integer parityId);
+
+    @Query("SELECT q FROM Quote q " +
+            "WHERE q.crossParity.baseCurrency.pk = :baseCurrencyId " +
+            "AND q.crossParity.quoteCurrency.pk = :quoteCurrencyId " +
+            "ORDER BY q.quoteTime DESC LIMIT 1")
+    Optional<Quote> findLatestByCrossParity(Integer baseCurrencyId, Integer quoteCurrencyId);
+
+
+
 }

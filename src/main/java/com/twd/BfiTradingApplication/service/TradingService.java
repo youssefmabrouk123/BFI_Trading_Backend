@@ -2,15 +2,11 @@ package com.twd.BfiTradingApplication.service;
 
 import com.corundumstudio.socketio.SocketIOServer;
 import com.twd.BfiTradingApplication.dto.PositionDTO;
-import com.twd.BfiTradingApplication.entity.Currency;
-import com.twd.BfiTradingApplication.entity.Position;
-import com.twd.BfiTradingApplication.entity.Transaction;
+import com.twd.BfiTradingApplication.entity.*;
 import com.twd.BfiTradingApplication.exception.InsufficientFundsException;
 import com.twd.BfiTradingApplication.exception.InvalidCurrencyException;
 import com.twd.BfiTradingApplication.exception.TradingException;
-import com.twd.BfiTradingApplication.repository.CurrencyRepository;
-import com.twd.BfiTradingApplication.repository.PositionRepository;
-import com.twd.BfiTradingApplication.repository.TransactionRepository;
+import com.twd.BfiTradingApplication.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.PostConstruct;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,6 +29,8 @@ public class TradingService {
     private final PositionRepository positionRepository;
     private final CurrencyRepository currencyRepository;
     private final SocketIOServer socketIOServer;
+    private final UserActionRepository userActionRepository;
+    private final UserRepository userRepository;
 
     private List<Position> positionList; // Liste en mémoire pour les positions
 
@@ -40,11 +39,15 @@ public class TradingService {
             TransactionRepository transactionRepository,
             PositionRepository positionRepository,
             CurrencyRepository currencyRepository,
+            UserRepository userRepository,
+            UserActionRepository userActionRepository,
             SocketIOServer socketIOServer) {
         this.transactionRepository = transactionRepository;
         this.positionRepository = positionRepository;
         this.currencyRepository = currencyRepository;
+        this.userActionRepository = userActionRepository;
         this.socketIOServer = socketIOServer;
+        this.userRepository = userRepository;
     }
 
     @PostConstruct
@@ -65,12 +68,14 @@ public class TradingService {
     }
 
     @Transactional
-    public Transaction executeTrade(Integer baseCurrencyId, Integer quoteCurrencyId,
+    public Transaction executeTrade(Integer userId,Integer baseCurrencyId, Integer quoteCurrencyId,
                                     BigDecimal mntAcht, String transactionType,
                                     BigDecimal marketPrice) {
         // Existing logic remains unchanged
         try {
             validateTradeParameters(baseCurrencyId, quoteCurrencyId, mntAcht, transactionType, marketPrice);
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new TradingException("User not found"));
 
             Currency devAchn = getCurrency(baseCurrencyId, "Base");
             Currency devVen = getCurrency(quoteCurrencyId, "Quote");
@@ -81,8 +86,8 @@ public class TradingService {
                     devAchn, devVen, mntAcht, mntVen, transactionType
             );
 
-            Position boughtPosition = getOrCreatePosition(tradeDetails.boughtCurrency);
-            Position soldPosition = getOrCreatePosition(tradeDetails.soldCurrency);
+            Position boughtPosition = getOrCreatePosition(tradeDetails.boughtCurrency, user);
+            Position soldPosition = getOrCreatePosition(tradeDetails.soldCurrency, user);
 
             validateFunds(soldPosition, tradeDetails.finalMntVen, transactionType);
 
@@ -92,7 +97,8 @@ public class TradingService {
                     tradeDetails.finalMntAcht,
                     tradeDetails.finalMntVen,
                     marketPrice,
-                    transactionType
+                    transactionType,
+                    user
             );
 
             updatePositions(boughtPosition, soldPosition, tradeDetails.finalMntAcht, tradeDetails.finalMntVen, transactionType);
@@ -100,6 +106,16 @@ public class TradingService {
             transactionRepository.save(transaction);
             positionRepository.save(boughtPosition);
             positionRepository.save(soldPosition);
+
+            UserAction userAction = new UserAction();
+            userAction.setUser(user);
+            userAction.setActionType("TRANSACTION");
+            userAction.setDetails(String.format("%s %s of %s for %s %s", transactionType, mntAcht,
+                    devAchn.getIdentifier(), mntVen, devVen.getIdentifier()));
+            userAction.setAmount(tradeDetails.finalMntAcht);
+            userAction.setCurrency(tradeDetails.boughtCurrency);
+            userAction.setActionTime(LocalDateTime.now());
+            userActionRepository.save(userAction);
 
             updatePositionList(boughtPosition, soldPosition);
             broadcastPositions();
@@ -178,14 +194,14 @@ public class TradingService {
 
     private Transaction createTransaction(Currency boughtCurrency, Currency soldCurrency,
                                           BigDecimal finalMntAcht, BigDecimal finalMntVen,
-                                          BigDecimal marketPrice, String transactionType) {
-        return new Transaction(boughtCurrency, soldCurrency, finalMntAcht, finalMntVen, marketPrice, transactionType.toUpperCase());
+                                          BigDecimal marketPrice, String transactionType, User user) {
+        return new Transaction(boughtCurrency, soldCurrency, finalMntAcht, finalMntVen, marketPrice, transactionType.toUpperCase(),user);
     }
 
-    private Position getOrCreatePosition(Currency currency) {
+    private Position getOrCreatePosition(Currency currency , User user) {
         return positionRepository.findByCurrency(currency)
                 .orElseGet(() -> {
-                    Position newPosition = new Position(currency, BigDecimal.ZERO, BigDecimal.ZERO);
+                    Position newPosition = new Position(currency, BigDecimal.ZERO, BigDecimal.ZERO , user);
                     return positionRepository.save(newPosition);
                 });
     }
@@ -233,9 +249,9 @@ public class TradingService {
     }
 
     @Transactional
-    public void setDailyNeeds(Integer currencyId, BigDecimal besoinDev) {
+    public void setDailyNeeds(Integer currencyId, BigDecimal besoinDev , User user) {
         Currency currency = getCurrency(currencyId, "");
-        Position position = getOrCreatePosition(currency);
+        Position position = getOrCreatePosition(currency , user);
         position.setBesoinDev(besoinDev != null ? besoinDev : BigDecimal.ZERO);
         positionRepository.save(position);
         updatePositionList(position, position); // Mettre à jour la liste avec la position modifiée
@@ -308,14 +324,21 @@ public class TradingService {
         return toDTO(savedPosition);
     }
 
-    public List<PositionDTO> createPositions(List<PositionDTO> positionDTOs) {
+    public List<PositionDTO> createPositions(List<PositionDTO> positionDTOs, User user) {
         List<Position> savedPositions = positionDTOs.stream().map(dto -> {
+            // Vérifier si la devise existe
             Currency currency = currencyRepository.findByIdentifier(dto.getIdentifier())
                     .orElseThrow(() -> new IllegalArgumentException("Devise introuvable pour l'identifiant : " + dto.getIdentifier()));
+
+            // Vérifier si une position existe déjà pour cette devise
             if (positionRepository.existsByCurrencyId(currency.getPk())) {
                 throw new IllegalStateException("La devise avec l'identifiant " + dto.getIdentifier() + " a déjà une position associée");
             }
+
+            // Convertir DTO en entité et assigner l'utilisateur
             Position position = toEntity(dto);
+            position.setUser(user);  // 🔥 Correction ici
+
             return positionRepository.save(position);
         }).collect(Collectors.toList());
 
@@ -351,4 +374,14 @@ public class TradingService {
         }
         return false;
     }
+    public User getUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+    }
+
+    public List<Position> getPositionsByUserId(Integer userId) {
+        return positionRepository.findByUserId(userId);
+    }
+
+
 }

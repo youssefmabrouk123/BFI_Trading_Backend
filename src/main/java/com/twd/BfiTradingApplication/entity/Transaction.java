@@ -35,6 +35,10 @@ public class Transaction {
     @Column(name = "transaction_type", nullable = false)
     private String transactionType;
 
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user; // Utilisateur effectuant la transaction
+
     public Transaction() {
         this.mntAcht = BigDecimal.ZERO;
         this.mntVen = BigDecimal.ZERO;
@@ -43,12 +47,13 @@ public class Transaction {
     }
 
     public Transaction(Currency devAchn, Currency devVen, BigDecimal mntAcht,
-                       BigDecimal mntVen, BigDecimal price, String transactionType) {
+                       BigDecimal mntVen, BigDecimal price, String transactionType, User user) {
         this.devAchn = devAchn;
         this.devVen = devVen;
         this.mntAcht = mntAcht != null ? mntAcht : BigDecimal.ZERO;
         this.mntVen = mntVen != null ? mntVen : BigDecimal.ZERO;
         this.price = price != null ? price : BigDecimal.ZERO;
         this.transactionType = transactionType != null ? transactionType : "BUY";
+        this.user = user;
     }
 }

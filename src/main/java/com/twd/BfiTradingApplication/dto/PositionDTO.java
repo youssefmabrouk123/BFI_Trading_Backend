@@ -1,6 +1,7 @@
 package com.twd.BfiTradingApplication.dto;
 
 
+import com.twd.BfiTradingApplication.entity.User;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -13,4 +14,5 @@ public class PositionDTO {
     private String identifier;
     private BigDecimal mntDev;
     private BigDecimal besoinDev;
+    private User user;
 }

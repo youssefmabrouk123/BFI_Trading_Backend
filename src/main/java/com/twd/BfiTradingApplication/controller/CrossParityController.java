@@ -1,18 +1,12 @@
 package com.twd.BfiTradingApplication.controller;
 
 import com.twd.BfiTradingApplication.entity.CrossParity;
-import com.twd.BfiTradingApplication.entity.DailyStats;
-import com.twd.BfiTradingApplication.entity.QuoteHistory;
 import com.twd.BfiTradingApplication.service.CrossParityService;
 import com.twd.BfiTradingApplication.service.DailyStatsService;
 import com.twd.BfiTradingApplication.service.QuoteHistoryService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -49,11 +43,11 @@ public class CrossParityController {
     }
 
 
-    @PutMapping("/{id}/favorie")
-    public ResponseEntity<CrossParity> updateFavorie(@PathVariable Integer id, @RequestParam boolean favorie) {
-        CrossParity updatedCrossParity = crossParityService.updateFavorie(id, favorie);
-        return ResponseEntity.ok(updatedCrossParity);
-    }
+//    @PutMapping("/{id}/favorie")
+//    public ResponseEntity<CrossParity> updateFavorie(@PathVariable Integer id, @RequestParam boolean favorie) {
+//        CrossParity updatedCrossParity = crossParityService.updateFavorie(id, favorie);
+//        return ResponseEntity.ok(updatedCrossParity);
+//    }
 
     @GetMapping("/identifiers")
     public List<String> getAllCrossParityIdentifiers() {

@@ -265,7 +265,6 @@ import java.util.stream.Collectors;
             dto.setPercentageVar(quote.getPercentageVar());
             dto.setQuoteTime(quote.getQuoteTime());
             dto.setIdentifier(quote.getCrossParity().getIdentifier());
-            dto.setFavorite(quote.getCrossParity().isFavorite());
             dto.setPk(quote.getCrossParity().getPk());
 
             // Get DailyStats list

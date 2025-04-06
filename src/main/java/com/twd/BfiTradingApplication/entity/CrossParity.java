@@ -59,33 +59,6 @@ public class CrossParity {
     @Column(nullable = false)
     private Double rate; // Add rate field
 
-
-
-    @Column(nullable = false)
-    private boolean favorite = false;
-
-
-
-//    @JsonIgnore
-//    @OneToMany(mappedBy = "crossParity", cascade = CascadeType.ALL)
-//    private List<Position> positions = new ArrayList<>();
-
-    public boolean isFavorite() {
-        return favorite;
-    }
-
-
-    public void setFavorite(boolean favorite) {
-        this.favorite = favorite;
-    }
-//    public List<Position> getPositions() {
-//        return positions;
-//    }
-
-//    public void setPositions(List<Position> positions) {
-//        this.positions = positions;
-//    }
-
     // Constructeurs
     public CrossParity() {
     }
