@@ -9,6 +9,7 @@ import com.twd.BfiTradingApplication.repository.QuoteHistoryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +28,9 @@ public class CandlestickService {
     private final QuoteHistoryRepository quoteHistoryRepository;
     private final CrossParityRepository crossParityRepository;
     private final SocketIOServer socketIOServer;
+
+    // In-memory cache for recent candlesticks
+    private final Map<String, CandlestickDTO> latestCandlesticks = new ConcurrentHashMap<>();
 
     @Autowired
     public CandlestickService(
@@ -41,7 +46,7 @@ public class CandlestickService {
             try {
                 Integer crossParityId = (Integer) data.get("crossParityId");
                 String timeframe = (String) data.get("timeframe");
-                Integer limit = (Integer) data.getOrDefault("limit", 100);
+                Integer limit = (Integer) data.getOrDefault("limit", 300);
 
                 List<CandlestickDTO> candlesticks = getCandlesticks(crossParityId, timeframe, limit);
                 client.sendEvent("candlestickData", candlesticks);
@@ -53,53 +58,57 @@ public class CandlestickService {
         });
     }
 
-    /**
-     * Get candlestick data for a specific cross parity and timeframe
-     * @param crossParityId The ID of the cross parity
-     * @param timeframe The timeframe (1m, 5m, 15m, 1h, 4h, 1d)
-     * @param limit Maximum number of candlesticks to return
-     * @return List of candlestick DTOs
-     */
+    @Cacheable(value = "candlesticks", key = "#crossParityId + '-' + #timeframe + '-' + #limit")
     public List<CandlestickDTO> getCandlesticks(Integer crossParityId, String timeframe, Integer limit) {
         CrossParity crossParity = crossParityRepository.findById(crossParityId)
                 .orElseThrow(() -> new RuntimeException("Cross parity not found"));
 
-        // Calculate time range based on timeframe and limit
         LocalDateTime endTime = LocalDateTime.now();
         LocalDateTime startTime = calculateStartTime(endTime, timeframe, limit);
 
-        // Get quote history data
         List<QuoteHistory> quoteHistories = quoteHistoryRepository
                 .findByCrossParity_PkAndPk_QuoteTimeBetweenOrderByPk_QuoteTimeAsc(
                         crossParityId, startTime, endTime);
 
-        // Group quote histories by time interval
         Map<LocalDateTime, List<QuoteHistory>> groupedQuotes = groupQuotesByTimeframe(quoteHistories, timeframe);
 
-        // Convert grouped quotes to candlestick DTOs
-        return groupedQuotes.entrySet().stream()
+        List<CandlestickDTO> candlesticks = groupedQuotes.entrySet().stream()
                 .map(entry -> createCandlestickDTO(entry.getKey(), entry.getValue(), timeframe))
+                .filter(Objects::nonNull)
                 .sorted(Comparator.comparing(CandlestickDTO::getTimestamp))
                 .collect(Collectors.toList());
+
+        // Cache the latest candlestick
+        if (!candlesticks.isEmpty()) {
+            String cacheKey = crossParityId + "-" + timeframe;
+            latestCandlesticks.put(cacheKey, candlesticks.get(candlesticks.size() - 1));
+        }
+
+        return candlesticks;
     }
 
-
-    @Scheduled(fixedRate = 5000) // Run every 5 seconds
+    @Scheduled(fixedRate = 1000) // Run every 1 second
     public void broadcastCandlestickUpdates() {
         try {
-            // For each active cross parity, broadcast updates for common timeframes
             crossParityRepository.findAll().forEach(crossParity -> {
                 for (String timeframe : Arrays.asList("1m", "5m", "15m", "1h")) {
-                    List<CandlestickDTO> candlesticks = getCandlesticks(crossParity.getPk(), timeframe, 1);
-                    if (!candlesticks.isEmpty()) {
-                        socketIOServer.getBroadcastOperations().sendEvent(
-                                "candlestickUpdate",
-                                Map.of(
-                                        "crossParityId", crossParity.getPk(),
-                                        "timeframe", timeframe,
-                                        "candlestick", candlesticks.get(candlesticks.size() - 1)
-                                )
-                        );
+                    String cacheKey = crossParity.getPk() + "-" + timeframe;
+                    CandlestickDTO latestCandlestick = latestCandlesticks.get(cacheKey);
+
+                    // Only broadcast if we have a new or updated candlestick
+                    if (latestCandlestick != null) {
+                        List<CandlestickDTO> candlesticks = getCandlesticks(crossParity.getPk(), timeframe, 1);
+                        if (!candlesticks.isEmpty() && !candlesticks.get(0).equals(latestCandlestick)) {
+                            socketIOServer.getBroadcastOperations().sendEvent(
+                                    "candlestickUpdate",
+                                    Map.of(
+                                            "crossParityId", crossParity.getPk(),
+                                            "timeframe", timeframe,
+                                            "candlestick", candlesticks.get(0)
+                                    )
+                            );
+                            latestCandlesticks.put(cacheKey, candlesticks.get(0));
+                        }
                     }
                 }
             });
@@ -108,9 +117,6 @@ public class CandlestickService {
         }
     }
 
-    /**
-     * Calculate the start time based on timeframe and limit
-     */
     private LocalDateTime calculateStartTime(LocalDateTime endTime, String timeframe, int limit) {
         return switch (timeframe) {
             case "1m" -> endTime.minus(limit, ChronoUnit.MINUTES);
@@ -123,13 +129,9 @@ public class CandlestickService {
         };
     }
 
-    /**
-     * Group quote histories by timeframe
-     */
     private Map<LocalDateTime, List<QuoteHistory>> groupQuotesByTimeframe(
             List<QuoteHistory> quoteHistories, String timeframe) {
-
-        Map<LocalDateTime, List<QuoteHistory>> groupedQuotes = new HashMap<>();
+        Map<LocalDateTime, List<QuoteHistory>> groupedQuotes = new ConcurrentHashMap<>();
 
         for (QuoteHistory quote : quoteHistories) {
             LocalDateTime quoteTime = quote.getPk().getQuoteTime();
@@ -141,9 +143,6 @@ public class CandlestickService {
         return groupedQuotes;
     }
 
-    /**
-     * Truncate time to the beginning of the interval based on timeframe
-     */
     private LocalDateTime truncateToTimeframe(LocalDateTime dateTime, String timeframe) {
         return switch (timeframe) {
             case "1m" -> dateTime.truncatedTo(ChronoUnit.MINUTES);
@@ -162,12 +161,8 @@ public class CandlestickService {
         };
     }
 
-    /**
-     * Create a candlestick DTO from a list of quote histories
-     */
     private CandlestickDTO createCandlestickDTO(
             LocalDateTime intervalStart, List<QuoteHistory> quotes, String timeframe) {
-
         if (quotes.isEmpty()) {
             return null;
         }
@@ -181,17 +176,16 @@ public class CandlestickService {
         BigDecimal high = quotes.stream()
                 .map(QuoteHistory::getBidPrice)
                 .max(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
+                .orElse(open);
 
         BigDecimal low = quotes.stream()
                 .map(QuoteHistory::getBidPrice)
                 .min(BigDecimal::compareTo)
-                .orElse(BigDecimal.ZERO);
+                .orElse(open);
 
-        // Simple volume calculation (could be refined based on business requirements)
         BigDecimal volume = BigDecimal.valueOf(quotes.size());
 
-        long timestamp = intervalStart.toEpochSecond(ZoneOffset.UTC) * 1000; // Convert to milliseconds
+        long timestamp = intervalStart.toEpochSecond(ZoneOffset.UTC) * 1000;
 
         return new CandlestickDTO(timestamp, open, high, low, close, volume);
     }
