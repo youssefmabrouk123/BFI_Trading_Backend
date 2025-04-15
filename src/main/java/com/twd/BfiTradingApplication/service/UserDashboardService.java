@@ -195,6 +195,16 @@ public class UserDashboardService {
         List<Transaction> transactions = transactionRepository.findByUserId(userId);
         List<Position> positions = positionRepository.findByUserId(userId);
 
+        List<Position> positionAll = positionRepository.findAll();
+
+
+        BigDecimal tndPosition = positionAll.stream()
+                .filter(pos -> "TND".equalsIgnoreCase(pos.getCurrency().getIdentifier()))
+                .map(Position::getMntDev)
+                .findFirst()
+                .orElse(BigDecimal.ZERO);
+        stats.setPosition(tndPosition.setScale(3, RoundingMode.HALF_UP));
+
         // 1. Nombre total de transactions
         stats.setTransactionCount(transactions.size());
 
@@ -256,6 +266,7 @@ public class UserDashboardService {
 
         // 13. NOUVEAU: Taux de succès des transactions (profitable vs non-profitable)
         stats.setSuccessRate(calculateSuccessRate(transactions));
+
 
         return stats;
     }

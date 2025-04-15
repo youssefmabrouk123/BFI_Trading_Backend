@@ -55,17 +55,6 @@ public class CrossParityService {
         return crossParityRepository.findAll();
     }
 
-//    public CrossParity updateFavorie(Integer id, boolean favorite) {
-//        Optional<CrossParity> optionalCrossParity = crossParityRepository.findById(id);
-//
-//        if (optionalCrossParity.isPresent()) {
-//            CrossParity crossParity = optionalCrossParity.get();
-//            crossParity.setFavorite(favorite);
-//            return crossParityRepository.save(crossParity);
-//        } else {
-//            throw new EntityNotFoundException("CrossParity not found with ID: " + id);
-//        }
-//    }
 
     public List<String> getAllCrossParityIdentifiers() {
         return crossParityRepository.findAll().stream()

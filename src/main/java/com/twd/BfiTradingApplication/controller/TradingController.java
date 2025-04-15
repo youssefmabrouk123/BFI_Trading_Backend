@@ -124,11 +124,6 @@ public class TradingController {
     }
 
 
-//    @GetMapping
-//    public List<Transaction> getUserTransactions() {
-//        Integer userId = getAuthenticatedUserId();
-//        return tradingService.getTransactionsByUserId(userId);
-//    }
     private Integer getAuthenticatedUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String email = authentication.getName();

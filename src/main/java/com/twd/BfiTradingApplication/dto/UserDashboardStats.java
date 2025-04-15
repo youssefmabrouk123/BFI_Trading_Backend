@@ -44,6 +44,7 @@ public class UserDashboardStats {
     private Map<String, Integer> transactionCountByType;
     private List<ProfitLossByDay> profitLossByDay;
     private BigDecimal currentPortfolioValue;
+    private BigDecimal position;
 
     // Nouvelles métriques pour le dashboard des cambistes
     private List<PerformanceMetric> performanceMetrics; // Métriques de performance

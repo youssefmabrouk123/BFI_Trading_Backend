@@ -1,5 +1,6 @@
 package com.twd.BfiTradingApplication.controller;
 
+import com.twd.BfiTradingApplication.dto.UserDTO;
 import com.twd.BfiTradingApplication.entity.User;
 import com.twd.BfiTradingApplication.service.UserService;
 import org.springframework.http.ResponseEntity;
@@ -18,26 +19,56 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> getAuthenticatedUser() {
+    public ResponseEntity<?> getAuthenticatedUser() {
         String email = getAuthenticatedUserEmail();
-        return ResponseEntity.ok(userService.getUserByEmail(email));
+        if (email == null) {
+            return ResponseEntity.status(401).body("User not authenticated");
+        }
+        try {
+            User user = userService.getUserByEmail(email);
+            // Convert to DTO to avoid Jackson serialization issues
+            UserDTO userDTO = UserDTO.fromUser(user);
+            return ResponseEntity.ok(userDTO);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body("User not found");
+        }
     }
 
     @PutMapping("/me")
-    public ResponseEntity<User> updateAuthenticatedUser(@RequestBody User user) {
+    public ResponseEntity<?> updateAuthenticatedUser(@RequestBody User updatedUser) {
         String email = getAuthenticatedUserEmail();
-        return ResponseEntity.ok(userService.updateUserByEmail(email, user));
+        if (email == null) {
+            return ResponseEntity.status(401).body("User not authenticated");
+        }
+        try {
+            User user = userService.updateUserByEmail(email, updatedUser);
+            // Convert to DTO to avoid Jackson serialization issues
+            UserDTO userDTO = UserDTO.fromUser(user);
+            return ResponseEntity.ok(userDTO);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @DeleteMapping("/me")
-    public ResponseEntity<String> deleteAuthenticatedUser() {
+    public ResponseEntity<?> deleteAuthenticatedUser() {
         String email = getAuthenticatedUserEmail();
-        userService.deleteUserByEmail(email);
-        return ResponseEntity.ok("User deleted successfully");
+        if (email == null) {
+            return ResponseEntity.status(401).body("User not authenticated");
+        }
+        try {
+            userService.deleteUserByEmail(email);
+            return ResponseEntity.ok("User deleted successfully");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        }
     }
 
     private String getAuthenticatedUserEmail() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return authentication.getName(); // Extract email from token
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            return null;
+        }
+        return authentication.getName();
     }
 }

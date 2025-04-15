@@ -151,6 +151,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -285,8 +287,12 @@ import java.util.stream.Collectors;
 
                 // Fill values from today's stats
                 if (todayStats != null) {
-                    dto.setMaxAsk(todayStats.getMaxAsk());
-                    dto.setMinBid(todayStats.getMinBid());
+                    dto.setMax(todayStats.getMaxAsk()
+                            .add(todayStats.getMaxBid())
+                            .divide(new BigDecimal("2"), 4, RoundingMode.HALF_UP));
+                    dto.setMin(todayStats.getMinAsk()
+                            .add(todayStats.getMinBid())
+                            .divide(new BigDecimal("2"), 4, RoundingMode.HALF_UP));
                 }
 
                 // Fill close bid from yesterday's stats

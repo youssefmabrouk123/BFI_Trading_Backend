@@ -20,6 +20,7 @@ import java.util.List;
         private Integer id;
         private String firstName;
         private String lastName;
+        @Column(name ="email", nullable = false , unique = true)
         private String email;
         private String password;
         private String role ="USER";

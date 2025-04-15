@@ -1,4 +1,3 @@
-// src/main/java/com/twd/BfiTradingApplication/config/SocketIOConfig.java
 package com.twd.BfiTradingApplication.config;
 
 import com.corundumstudio.socketio.SocketIOServer;

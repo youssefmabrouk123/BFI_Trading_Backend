@@ -29,9 +29,8 @@ public interface QuoteHistoryRepository extends JpaRepository<QuoteHistory, Quot
     );
 
 
-
     QuoteHistory findTopByCrossParityOrderByPkQuoteTimeDesc(CrossParity crossParity);
 
-
-
+    List<QuoteHistory> findByCrossParity_PkAndPk_QuoteTimeBetweenOrderByPk_QuoteTimeAsc(
+            Integer crossParityPk, LocalDateTime startTime, LocalDateTime endTime);
 }
