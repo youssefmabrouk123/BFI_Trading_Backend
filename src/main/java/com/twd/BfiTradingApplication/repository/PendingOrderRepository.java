@@ -1,6 +1,8 @@
 package com.twd.BfiTradingApplication.repository;
 
 import com.twd.BfiTradingApplication.entity.PendingOrder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
@@ -12,8 +14,9 @@ import java.util.List;
 public interface PendingOrderRepository extends JpaRepository<PendingOrder, Integer> {
 
 
-    List<PendingOrder> findByStatus(String status);
+    //List<PendingOrder> findByStatus(String status);
 
+    Page<PendingOrder> findByStatus(String status, Pageable pageable);
 
 
     List<PendingOrder> findByUserIdAndStatus(Integer userId, String status);

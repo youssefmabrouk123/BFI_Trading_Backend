@@ -4,10 +4,14 @@ import com.corundumstudio.socketio.SocketIOServer;
 import com.twd.BfiTradingApplication.dto.NotificationDTO;
 import com.twd.BfiTradingApplication.dto.PendingOrderDTO;
 import com.twd.BfiTradingApplication.entity.*;
+import com.twd.BfiTradingApplication.exception.InsufficientFundsException;
+import com.twd.BfiTradingApplication.exception.TradingException;
 import com.twd.BfiTradingApplication.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +57,7 @@ public class PendingOrderService {
 
     @Transactional
     public PendingOrderDTO createPendingOrder(PendingOrderDTO dto, Integer userId) {
+        logger.debug("Creating pending order for userId={}", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found with ID: " + userId));
 
@@ -63,6 +68,8 @@ public class PendingOrderService {
                 .orElseThrow(() -> new RuntimeException("Quote currency not found: " + dto.getQuoteCurrencyIdentifier()));
 
         validateOrderFields(dto);
+
+        LocalDateTime expiresAt = calculateExpiresAt(dto.getDuration(), dto.getExpiresAt());
 
         PendingOrder pendingOrder = new PendingOrder();
         pendingOrder.setBaseCurrency(baseCurrency);
@@ -75,14 +82,16 @@ public class PendingOrderService {
         pendingOrder.setUser(user);
         pendingOrder.setStatus("PENDING");
         pendingOrder.setCreatedAt(LocalDateTime.now());
+        pendingOrder.setExpiresAt(expiresAt);
 
         PendingOrder savedOrder = pendingOrderRepository.save(pendingOrder);
 
         UserAction userAction = new UserAction();
         userAction.setUser(user);
         userAction.setActionType("CREATE_PENDING_ORDER");
-        userAction.setDetails(String.format("Created %s %s order for %s %s at price %s",
-                dto.getTriggerType(), dto.getOrderType(), dto.getAmount(), baseCurrency.getIdentifier(), dto.getTargetPrice()));
+        userAction.setDetails(String.format("Created %s %s order for %s %s at price %s, expires at %s",
+                dto.getTriggerType(), dto.getOrderType(), dto.getAmount(), baseCurrency.getIdentifier(),
+                dto.getTargetPrice(), expiresAt));
         userAction.setAmount(dto.getAmount());
         userAction.setCurrency(baseCurrency);
         userAction.setActionTime(LocalDateTime.now());
@@ -90,6 +99,28 @@ public class PendingOrderService {
 
         broadcastPendingOrdersUpdate(userId);
         return toDTO(savedOrder);
+    }
+
+    private LocalDateTime calculateExpiresAt(String duration, LocalDateTime expiresAt) {
+        if (expiresAt != null) {
+            return expiresAt;
+        }
+        if (duration == null || duration.isEmpty()) {
+            throw new IllegalArgumentException("Either duration or expiresAt must be provided");
+        }
+        if (duration.endsWith("_MINUTES")) {
+            try {
+                String minutesStr = duration.substring(0, duration.length() - "_MINUTES".length());
+                int minutes = Integer.parseInt(minutesStr);
+                if (minutes < 1 || minutes > 1440) {
+                    throw new IllegalArgumentException("Duration must be between 1 and 1440 minutes");
+                }
+                return LocalDateTime.now().plusMinutes(minutes);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid duration format: " + duration);
+            }
+        }
+        throw new IllegalArgumentException("Invalid duration format: " + duration + ". Must be in the form <number>_MINUTES");
     }
 
     private void validateOrderFields(PendingOrderDTO dto) {
@@ -111,10 +142,30 @@ public class PendingOrderService {
         if (!"EXECUTE".equals(actionOnTrigger) && !"NOTIFY".equals(actionOnTrigger)) {
             throw new IllegalArgumentException("Action on trigger must be EXECUTE or NOTIFY");
         }
+        if (dto.getExpiresAt() == null && (dto.getDuration() == null || dto.getDuration().isEmpty())) {
+            throw new IllegalArgumentException("Either expiresAt or duration must be provided");
+        }
+        if (dto.getExpiresAt() != null && dto.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Expiration time must be in the future");
+        }
     }
 
     public List<PendingOrderDTO> getPendingOrdersByUser(Integer userId) {
         return pendingOrderRepository.findByUserIdAndStatus(userId, "PENDING")
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<PendingOrderDTO> getCancelledOrdersByUser(Integer userId) {
+        return pendingOrderRepository.findByUserIdAndStatus(userId, "CANCELLED")
+                .stream()
+                .map(this::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<PendingOrderDTO> getExpiredOrdersByUser(Integer userId) {
+        return pendingOrderRepository.findByUserIdAndStatus(userId, "EXPIRED")
                 .stream()
                 .map(this::toDTO)
                 .collect(Collectors.toList());
@@ -144,12 +195,12 @@ public class PendingOrderService {
                 });
     }
 
-    @Scheduled(fixedRate = 3000) // Check every 3 seconds
-    @Transactional
+    @Scheduled(fixedRate = 3000)
     public void checkAndExecutePendingOrders() {
         logger.info("Checking pending orders for execution...");
 
-        List<PendingOrder> pendingOrders = pendingOrderRepository.findByStatus("PENDING");
+        Page<PendingOrder> pendingOrdersPage = pendingOrderRepository.findByStatus("PENDING", PageRequest.of(0, 100));
+        List<PendingOrder> pendingOrders = pendingOrdersPage.getContent();
         if (pendingOrders.isEmpty()) {
             logger.debug("No pending orders found.");
             return;
@@ -157,40 +208,64 @@ public class PendingOrderService {
 
         for (PendingOrder order : pendingOrders) {
             try {
-                Optional<Quote> quoteOpt = quoteRepository.findLatestByCrossParity(
-                        order.getBaseCurrency().getPk(),
-                        order.getQuoteCurrency().getPk()
-                );
-
-                if (quoteOpt.isPresent()) {
-                    Quote quote = quoteOpt.get();
-                    BigDecimal currentPrice = "BUY".equals(order.getOrderType())
-                            ? quote.getAskPrice()
-                            : quote.getBidPrice();
-
-                    if (shouldTriggerOrder(order, currentPrice)) {
-                        processOrder(order, currentPrice);
-                    }
-                } else {
-                    logger.warn("No quote found for order ID: {}", order.getId());
-                }
+                processSingleOrder(order);
             } catch (Exception e) {
                 logger.error("Error processing pending order ID {}: {}", order.getId(), e.getMessage(), e);
             }
         }
     }
 
+    @Transactional
+    public void processSingleOrder(PendingOrder order) {
+        logger.debug("Processing order ID {} for user {}", order.getId(), order.getUser().getId());
+
+        if (order.getExpiresAt() != null && LocalDateTime.now().isAfter(order.getExpiresAt())) {
+            order.setStatus("EXPIRED");
+            pendingOrderRepository.save(order);
+            String message = String.format("Order %s %s for %s %s at price %s has expired",
+                    order.getTriggerType(), order.getOrderType(), order.getAmount(),
+                    order.getBaseCurrency().getIdentifier(), order.getTargetPrice());
+            Notification notification = new Notification(order.getUser(), "ORDER_EXPIRED", message);
+            notificationRepository.save(notification);
+            sendOrderExecutionNotification(order, notification);
+            broadcastPendingOrdersUpdate(order.getUser().getId());
+            return;
+        }
+
+        Optional<Quote> quoteOpt = quoteRepository.findLatestByCrossParity(
+                order.getBaseCurrency().getPk(),
+                order.getQuoteCurrency().getPk()
+        );
+
+        if (quoteOpt.isPresent()) {
+            Quote quote = quoteOpt.get();
+            BigDecimal currentPrice = "BUY".equals(order.getOrderType())
+                    ? quote.getAskPrice()
+                    : quote.getBidPrice();
+
+            if (shouldTriggerOrder(order, currentPrice)) {
+                processOrder(order, currentPrice);
+            }
+        } else {
+            logger.warn("No quote found for order ID: {}", order.getId());
+        }
+    }
+
     private boolean shouldTriggerOrder(PendingOrder order, BigDecimal currentPrice) {
+        if (currentPrice == null) {
+            logger.warn("Current price is null for order ID {}", order.getId());
+            return false;
+        }
         if ("BUY".equals(order.getOrderType())) {
             if ("STOP_LOSS".equals(order.getTriggerType())) {
                 return currentPrice.compareTo(order.getTargetPrice()) >= 0;
-            } else { // TAKE_PROFIT
+            } else {
                 return currentPrice.compareTo(order.getTargetPrice()) <= 0;
             }
-        } else { // SELL
+        } else {
             if ("STOP_LOSS".equals(order.getTriggerType())) {
                 return currentPrice.compareTo(order.getTargetPrice()) <= 0;
-            } else { // TAKE_PROFIT
+            } else {
                 return currentPrice.compareTo(order.getTargetPrice()) >= 0;
             }
         }
@@ -211,10 +286,18 @@ public class PendingOrderService {
     }
 
     private void executeOrder(PendingOrder order, BigDecimal currentPrice) {
-        logger.info("Executing {} {} order for user {} at price {}",
-                order.getTriggerType(), order.getOrderType(), order.getUser().getId(), currentPrice);
+        logger.info("Executing {} {} order for user {} at price {}, baseCurrency={}, quoteCurrency={}",
+                order.getTriggerType(), order.getOrderType(), order.getUser().getId(), currentPrice,
+                order.getBaseCurrency().getIdentifier(), order.getQuoteCurrency().getIdentifier());
 
         try {
+            if (currentPrice == null || currentPrice.compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Invalid current price: " + currentPrice);
+            }
+            if (order.getAmount() == null || order.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+                throw new IllegalArgumentException("Invalid order amount: " + order.getAmount());
+            }
+
             Transaction transaction = tradingService.executeTrade(
                     order.getUser().getId(),
                     order.getBaseCurrency().getPk(),
@@ -224,9 +307,6 @@ public class PendingOrderService {
                     currentPrice
             );
 
-            logger.info("Successfully executed order ID {}, created transaction ID {}",
-                    order.getId(), transaction.getId());
-
             String message = String.format("Order %s %s executed for %s %s at price %s",
                     order.getTriggerType(), order.getOrderType(), order.getAmount(),
                     order.getBaseCurrency().getIdentifier(), currentPrice);
@@ -235,8 +315,18 @@ public class PendingOrderService {
 
             sendOrderExecutionNotification(order, notification);
         } catch (Exception e) {
-            logger.error("Failed to execute order ID {}: {}", order.getId(), e.getMessage(), e);
-            throw new RuntimeException("Order execution failed", e);
+            logger.error("Unexpected error for order ID {}: baseCurrency={}, quoteCurrency={}, amount={}, orderType={}, currentPrice={}, error={}",
+                    order.getId(), order.getBaseCurrency().getIdentifier(), order.getQuoteCurrency().getIdentifier(),
+                    order.getAmount(), order.getOrderType(), currentPrice, e.getMessage(), e);
+            order.setStatus("FAILED");
+            order.setExecutedAt(LocalDateTime.now());
+            pendingOrderRepository.save(order);
+            String message = String.format("Failed to execute %s %s order for %s %s at price %s: %s",
+                    order.getTriggerType(), order.getOrderType(), order.getAmount(),
+                    order.getBaseCurrency().getIdentifier(), currentPrice, e.getMessage());
+            Notification notification = new Notification(order.getUser(), "ORDER_FAILED", message);
+            notificationRepository.save(notification);
+            sendOrderExecutionNotification(order, notification);
         }
     }
 
@@ -370,6 +460,7 @@ public class PendingOrderService {
         dto.setStatus(pendingOrder.getStatus());
         dto.setCreatedAt(pendingOrder.getCreatedAt());
         dto.setExecutedAt(pendingOrder.getExecutedAt());
+        dto.setExpiresAt(pendingOrder.getExpiresAt());
         return dto;
     }
 

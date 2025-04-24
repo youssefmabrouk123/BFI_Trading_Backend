@@ -24,7 +24,8 @@ import java.util.stream.Collectors;
 @Service
 public class TradingService {
     private static final Logger logger = LoggerFactory.getLogger(TradingService.class);
-
+    @Autowired
+    private CrossParityRepository crossParityRepository;
     private final TransactionRepository transactionRepository;
     private final PositionRepository positionRepository;
     private final CurrencyRepository currencyRepository;
@@ -67,20 +68,28 @@ public class TradingService {
         });
     }
 
+    public CrossParity getCrossParityByCurrencies(Currency baseCurrency, Currency quoteCurrency) {
+        return crossParityRepository.findByBaseCurrencyAndQuoteCurrency(baseCurrency, quoteCurrency)
+                .orElseThrow(() -> new TradingException("CrossParity not found for " + baseCurrency.getIdentifier() + "/" + quoteCurrency.getIdentifier()));
+    }
+
     @Transactional
-    public Transaction executeTrade(Integer userId,Integer baseCurrencyId, Integer quoteCurrencyId,
-                                    BigDecimal mntAcht, String transactionType,
-                                    BigDecimal marketPrice) {
-        // Existing logic remains unchanged
+    public Transaction executeTrade(Integer userId, Integer baseCurrencyId, Integer quoteCurrencyId,
+                                    BigDecimal mntAcht, String transactionType, BigDecimal marketPrice) {
+        logger.debug("Executing trade for userId={}, baseCurrencyId={}, quoteCurrencyId={}, amount={}, type={}, price={}",
+                userId, baseCurrencyId, quoteCurrencyId, mntAcht, transactionType, marketPrice);
+
         try {
             validateTradeParameters(baseCurrencyId, quoteCurrencyId, mntAcht, transactionType, marketPrice);
             User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new TradingException("User not found"));
+                    .orElseThrow(() -> new TradingException("User not found with ID: " + userId));
 
             Currency devAchn = getCurrency(baseCurrencyId, "Base");
             Currency devVen = getCurrency(quoteCurrencyId, "Quote");
 
-            BigDecimal mntVen = calculateSoldAmount(mntAcht, marketPrice);
+            BigDecimal quotity = getCrossParityByCurrencies(devAchn, devVen).getQuotity();
+
+            BigDecimal mntVen = calculateSoldAmount(mntAcht, marketPrice, quotity);
 
             TradeCurrencyDetails tradeDetails = determineTradeCurrencyDetails(
                     devAchn, devVen, mntAcht, mntVen, transactionType
@@ -132,13 +141,14 @@ public class TradingService {
             return transaction;
 
         } catch (InsufficientFundsException e) {
-            throw new TradingException("Transaction failed: Insufficient funds to execute the trade.");
+            throw new TradingException("Insufficient funds to execute the trade: " + e.getMessage());
         } catch (InvalidCurrencyException e) {
-            throw new TradingException("Transaction failed: Invalid currency identifiers provided.");
+            throw new TradingException("Invalid currency identifiers provided: " + e.getMessage());
         } catch (Exception e) {
-            throw new TradingException("An unexpected error occurred while executing the trade. Please try again later.");
+            throw new TradingException("Unexpected error during trade execution: " + e.getMessage());
         }
     }
+
     private void validateTradeParameters(Integer baseCurrencyId, Integer quoteCurrencyId,
                                          BigDecimal mntAcht, String transactionType,
                                          BigDecimal marketPrice) {
@@ -158,11 +168,13 @@ public class TradingService {
 
     private Currency getCurrency(Integer currencyId, String type) {
         return currencyRepository.findById(currencyId)
-                .orElseThrow(() -> new RuntimeException(type + " currency not found"));
+                .orElseThrow(() -> new TradingException(type + " currency not found with ID: " + currencyId));
     }
 
-    private BigDecimal calculateSoldAmount(BigDecimal mntAcht, BigDecimal marketPrice) {
-        return mntAcht.multiply(marketPrice).setScale(4, RoundingMode.HALF_UP);
+    private BigDecimal calculateSoldAmount(BigDecimal mntAcht, BigDecimal marketPrice, BigDecimal quotity) {
+        return mntAcht.multiply(marketPrice)
+                .setScale(4, RoundingMode.HALF_UP)
+                .divide(quotity, 4, RoundingMode.HALF_UP);
     }
 
     private static class TradeCurrencyDetails {
@@ -195,20 +207,20 @@ public class TradingService {
     private Transaction createTransaction(Currency boughtCurrency, Currency soldCurrency,
                                           BigDecimal finalMntAcht, BigDecimal finalMntVen,
                                           BigDecimal marketPrice, String transactionType, User user) {
-        return new Transaction(boughtCurrency, soldCurrency, finalMntAcht, finalMntVen, marketPrice, transactionType.toUpperCase(),user);
+        return new Transaction(boughtCurrency, soldCurrency, finalMntAcht, finalMntVen, marketPrice, transactionType.toUpperCase(), user);
     }
 
-    private Position getOrCreatePosition(Currency currency , User user) {
+    private Position getOrCreatePosition(Currency currency, User user) {
         return positionRepository.findByCurrency(currency)
                 .orElseGet(() -> {
-                    Position newPosition = new Position(currency, BigDecimal.ZERO, BigDecimal.ZERO , user);
+                    Position newPosition = new Position(currency, BigDecimal.ZERO, BigDecimal.ZERO, user);
                     return positionRepository.save(newPosition);
                 });
     }
 
     private void validateFunds(Position soldPosition, BigDecimal mntVen, String transactionType) {
         if (soldPosition.getMntDev().compareTo(mntVen) < 0) {
-            throw new RuntimeException(String.format(
+            throw new InsufficientFundsException(String.format(
                     "Insufficient funds in %s: Available: %s, Required: %s",
                     soldPosition.getCurrency().getIdentifier(),
                     soldPosition.getMntDev(),
@@ -222,22 +234,6 @@ public class TradingService {
                                  String transactionType) {
         boughtPosition.setMntDev(boughtPosition.getMntDev().add(mntAcht));
         soldPosition.setMntDev(soldPosition.getMntDev().subtract(mntVen));
-//        updateDailyNeeds(boughtPosition, soldPosition, mntAcht, mntVen, transactionType);
-    }
-
-    private void updateDailyNeeds(Position boughtPosition, Position soldPosition,
-                                  BigDecimal mntAcht, BigDecimal mntVen,
-                                  String transactionType) {
-        if ("BUY".equalsIgnoreCase(transactionType)) {
-            updatePositionNeeds(boughtPosition, mntAcht);
-        } else {
-            updatePositionNeeds(soldPosition, mntVen);
-        }
-    }
-
-    private void updatePositionNeeds(Position position, BigDecimal amount) {
-        BigDecimal newBesoin = position.getBesoinDev().subtract(amount);
-        position.setBesoinDev(newBesoin.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : newBesoin);
     }
 
     private void updatePositionList(Position... positions) {
@@ -249,12 +245,12 @@ public class TradingService {
     }
 
     @Transactional
-    public void setDailyNeeds(Integer currencyId, BigDecimal besoinDev , User user) {
+    public void setDailyNeeds(Integer currencyId, BigDecimal besoinDev, User user) {
         Currency currency = getCurrency(currencyId, "");
-        Position position = getOrCreatePosition(currency , user);
+        Position position = getOrCreatePosition(currency, user);
         position.setBesoinDev(besoinDev != null ? besoinDev : BigDecimal.ZERO);
         positionRepository.save(position);
-        updatePositionList(position, position); // Mettre à jour la liste avec la position modifiée
+        updatePositionList(position);
         broadcastPositions();
     }
 
@@ -285,7 +281,6 @@ public class TradingService {
         }
     }
 
-    // Conversion Entité -> DTO
     private PositionDTO toDTO(Position position) {
         PositionDTO dto = new PositionDTO();
         dto.setPk(position.getPk());
@@ -295,12 +290,11 @@ public class TradingService {
         return dto;
     }
 
-    // Conversion DTO -> Entité
     private Position toEntity(PositionDTO dto) {
         Position position = new Position();
         position.setPk(dto.getPk());
         Currency currency = currencyRepository.findByIdentifier(dto.getIdentifier())
-                .orElseThrow(() -> new IllegalArgumentException("Devise introuvable pour l'identifiant : " + dto.getIdentifier()));
+                .orElseThrow(() -> new IllegalArgumentException("Currency not found for identifier: " + dto.getIdentifier()));
         position.setCurrency(currency);
         position.setMntDev(dto.getMntDev() != null ? dto.getMntDev() : BigDecimal.ZERO);
         position.setBesoinDev(dto.getBesoinDev() != null ? dto.getBesoinDev() : BigDecimal.ZERO);
@@ -313,36 +307,30 @@ public class TradingService {
 
     public PositionDTO createPosition(PositionDTO positionDTO) {
         Currency currency = currencyRepository.findByIdentifier(positionDTO.getIdentifier())
-                .orElseThrow(() -> new IllegalArgumentException("Devise introuvable pour l'identifiant : " + positionDTO.getIdentifier()));
+                .orElseThrow(() -> new IllegalArgumentException("Currency not found for identifier: " + positionDTO.getIdentifier()));
         if (positionRepository.existsByCurrencyId(currency.getPk())) {
-            throw new IllegalStateException("Cette devise a déjà une position associée");
+            throw new IllegalStateException("This currency already has an associated position");
         }
         Position position = toEntity(positionDTO);
         Position savedPosition = positionRepository.save(position);
-        updatePositionList(savedPosition, savedPosition); // Mettre à jour la liste
+        updatePositionList(savedPosition);
         broadcastPositions();
         return toDTO(savedPosition);
     }
 
     public List<PositionDTO> createPositions(List<PositionDTO> positionDTOs, User user) {
         List<Position> savedPositions = positionDTOs.stream().map(dto -> {
-            // Vérifier si la devise existe
             Currency currency = currencyRepository.findByIdentifier(dto.getIdentifier())
-                    .orElseThrow(() -> new IllegalArgumentException("Devise introuvable pour l'identifiant : " + dto.getIdentifier()));
-
-            // Vérifier si une position existe déjà pour cette devise
+                    .orElseThrow(() -> new IllegalArgumentException("Currency not found for identifier: " + dto.getIdentifier()));
             if (positionRepository.existsByCurrencyId(currency.getPk())) {
-                throw new IllegalStateException("La devise avec l'identifiant " + dto.getIdentifier() + " a déjà une position associée");
+                throw new IllegalStateException("Currency with identifier " + dto.getIdentifier() + " already has an associated position");
             }
-
-            // Convertir DTO en entité et assigner l'utilisateur
             Position position = toEntity(dto);
-            position.setUser(user);  // 🔥 Correction ici
-
+            position.setUser(user);
             return positionRepository.save(position);
         }).collect(Collectors.toList());
 
-        savedPositions.forEach(position -> updatePositionList(position, position));
+        savedPositions.forEach(position -> updatePositionList(position));
         broadcastPositions();
         return savedPositions.stream().map(this::toDTO).collect(Collectors.toList());
     }
@@ -350,16 +338,16 @@ public class TradingService {
     public Optional<PositionDTO> updatePosition(Integer id, PositionDTO positionDTO) {
         return positionRepository.findById(id).map(position -> {
             Currency newCurrency = currencyRepository.findByIdentifier(positionDTO.getIdentifier())
-                    .orElseThrow(() -> new IllegalArgumentException("Devise introuvable pour l'identifiant : " + positionDTO.getIdentifier()));
+                    .orElseThrow(() -> new IllegalArgumentException("Currency not found for identifier: " + positionDTO.getIdentifier()));
             if (!position.getCurrency().getPk().equals(newCurrency.getPk()) &&
                     positionRepository.existsByCurrencyId(newCurrency.getPk())) {
-                throw new IllegalStateException("La nouvelle devise a déjà une position associée");
+                throw new IllegalStateException("The new currency already has an associated position");
             }
             position.setCurrency(newCurrency);
             position.setMntDev(positionDTO.getMntDev() != null ? positionDTO.getMntDev() : BigDecimal.ZERO);
             position.setBesoinDev(positionDTO.getBesoinDev() != null ? positionDTO.getBesoinDev() : BigDecimal.ZERO);
             Position updatedPosition = positionRepository.save(position);
-            updatePositionList(updatedPosition, updatedPosition);
+            updatePositionList(updatedPosition);
             broadcastPositions();
             return toDTO(updatedPosition);
         });
@@ -374,14 +362,13 @@ public class TradingService {
         }
         return false;
     }
+
     public User getUserByEmail(String email) {
         return userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+                .orElseThrow(() -> new TradingException("User not found with email: " + email));
     }
 
     public List<Position> getPositionsByUserId(Integer userId) {
         return positionRepository.findByUserId(userId);
     }
-
-
 }

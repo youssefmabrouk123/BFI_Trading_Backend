@@ -14,10 +14,13 @@ public class PendingOrderDTO {
     private String quoteCurrencyIdentifier;
     private BigDecimal amount;
     private BigDecimal targetPrice;
-    private String orderType; // "BUY" or "SELL"
-    private String triggerType; // "STOP_LOSS" or "TAKE_PROFIT"
-    private String actionOnTrigger; // "EXECUTE" or "NOTIFY"
-    private String status; // "PENDING", "EXECUTED", "CANCELLED"
+    private String orderType;
+    private String triggerType;
+    private String actionOnTrigger;
+    private String status;
     private LocalDateTime createdAt;
     private LocalDateTime executedAt;
+    private LocalDateTime expiresAt;
+    private String duration;
+    private String errorMessage; // e.g., "30_MINUTES", "1_HOUR", "1_DAY"
 }

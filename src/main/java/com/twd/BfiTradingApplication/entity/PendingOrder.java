@@ -38,13 +38,16 @@ public class PendingOrder {
     private String actionOnTrigger; // "EXECUTE" or "NOTIFY"
 
     @Column(name = "status", nullable = false)
-    private String status; // "PENDING", "EXECUTED", "CANCELLED"
+    private String status; // "PENDING", "EXECUTED", "CANCELLED", "EXPIRED"
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @Column(name = "executed_at")
     private LocalDateTime executedAt;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt; // New field for expiration time
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -61,7 +64,7 @@ public class PendingOrder {
 
     public PendingOrder(Currency baseCurrency, Currency quoteCurrency, BigDecimal amount,
                         BigDecimal targetPrice, String orderType, String triggerType,
-                        String actionOnTrigger, User user) {
+                        String actionOnTrigger, User user, LocalDateTime expiresAt) {
         this.baseCurrency = baseCurrency;
         this.quoteCurrency = quoteCurrency;
         this.amount = amount != null ? amount : BigDecimal.ZERO;
@@ -71,5 +74,6 @@ public class PendingOrder {
         this.actionOnTrigger = actionOnTrigger != null ? actionOnTrigger : "EXECUTE";
         this.status = "PENDING";
         this.user = user;
+        this.expiresAt = expiresAt;
     }
 }
