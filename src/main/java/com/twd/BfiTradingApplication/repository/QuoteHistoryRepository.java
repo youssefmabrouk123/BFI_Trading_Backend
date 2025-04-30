@@ -33,4 +33,16 @@ public interface QuoteHistoryRepository extends JpaRepository<QuoteHistory, Quot
 
     List<QuoteHistory> findByCrossParity_PkAndPk_QuoteTimeBetweenOrderByPk_QuoteTimeAsc(
             Integer crossParityPk, LocalDateTime startTime, LocalDateTime endTime);
+
+//    @Query("SELECT qh FROM QuoteHistory qh WHERE qh.crossParity.pk = ?1 AND qh.pk.quoteTime BETWEEN ?2 AND ?3 ORDER BY qh.pk.quoteTime ASC")
+//    List<QuoteHistory> findByCrossParityAndQuoteTimeBetweenOrderByQuoteTimeAsc(CrossParity crossParity, LocalDateTime startDateTime, LocalDateTime endDateTime);
+@Query("SELECT qh FROM QuoteHistory qh WHERE qh.crossParity = ?1 AND qh.pk.quoteTime BETWEEN ?2 AND ?3 ORDER BY qh.pk.quoteTime ASC")
+List<QuoteHistory> findByCrossParityAndQuoteTimeBetweenOrderByQuoteTimeAsc(CrossParity crossParity, LocalDateTime startDateTime, LocalDateTime endDateTime);
+
+
+
+    List<QuoteHistory> findByCrossParityAndPk_QuoteTimeBetween(CrossParity crossParity, LocalDateTime start, LocalDateTime end);
+    @Query("SELECT q FROM QuoteHistory q WHERE q.crossParity.pk = ?1 AND q.pk.quoteTime BETWEEN ?2 AND ?3 ORDER BY q.pk.quoteTime")
+    List<QuoteHistory> findByCrossParityPkAndQuoteTimeBetween(Integer crossParityId, LocalDateTime startTime, LocalDateTime endTime);
+
 }

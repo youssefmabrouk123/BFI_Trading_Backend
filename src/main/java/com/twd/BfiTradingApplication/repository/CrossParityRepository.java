@@ -13,7 +13,13 @@ import java.util.Optional;
 public interface CrossParityRepository extends JpaRepository<CrossParity, Integer> {
     boolean existsByIdentifier(String identifier);
     CrossParity findByIdentifier(String identifier);
-    Optional<CrossParity> findByBaseCurrencyAndQuoteCurrency(Currency baseCurrency, Currency quoteCurrency);}
+
+    Optional<CrossParity> findByBaseCurrencyAndQuoteCurrency(Currency baseCurrency, Currency quoteCurrency);
+
+//    Optional<CrossParity> findByIdentifier(String identifier);
+
+
+}
 
 
 

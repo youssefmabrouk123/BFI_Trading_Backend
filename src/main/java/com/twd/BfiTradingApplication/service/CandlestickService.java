@@ -187,6 +187,7 @@ public class CandlestickService {
 
         long timestamp = intervalStart.toEpochSecond(ZoneOffset.UTC) * 1000;
 
+
         return new CandlestickDTO(timestamp, open, high, low, close, volume);
     }
 }

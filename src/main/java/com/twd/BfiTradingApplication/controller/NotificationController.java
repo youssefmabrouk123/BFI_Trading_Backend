@@ -21,6 +21,12 @@ public class NotificationController {
         return ResponseEntity.ok(notifications);
     }
 
+    @GetMapping("/today/{userId}")
+    public ResponseEntity<List<NotificationDTO>> getAllNotificationsForToday(@PathVariable Integer userId) {
+        List<NotificationDTO> notifications = pendingOrderService.getAllNotificationsForToday(userId);
+        return ResponseEntity.ok(notifications);
+    }
+
     @PostMapping("/mark-read/{notificationId}")
     public ResponseEntity<Void> markNotificationAsRead(
             @PathVariable Integer notificationId,

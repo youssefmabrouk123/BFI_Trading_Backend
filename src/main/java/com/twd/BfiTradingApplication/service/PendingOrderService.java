@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -342,26 +343,35 @@ public class PendingOrderService {
 
         sendOrderTriggerNotification(order, notification);
     }
-
     private void sendOrderExecutionNotification(PendingOrder order, Notification notification) {
+        String room = null;
         try {
             NotificationDTO notificationDTO = toNotificationDTO(notification);
-            String room = "user-" + order.getUser().getId();
+            room = "user-" + order.getUser().getId();
             socketIOServer.getRoomOperations(room).sendEvent("orderExecution", notificationDTO);
+            logger.info("Sent orderExecution notification to room {}: ID={}, Message={}",
+                    room, notificationDTO.getId(), notificationDTO.getMessage());
             broadcastNotificationUpdate(order.getUser().getId());
         } catch (Exception e) {
-            logger.error("Error sending order execution notification for order ID {}: {}", order.getId(), e.getMessage(), e);
+            logger.error("Error sending orderExecution notification for order ID {} to room {}: {}",
+                    order.getId(), room, e.getMessage(), e);
         }
     }
 
+
+
     private void sendOrderTriggerNotification(PendingOrder order, Notification notification) {
+        String room = null;
         try {
             NotificationDTO notificationDTO = toNotificationDTO(notification);
-            String room = "user-" + order.getUser().getId();
+            room = "user-" + order.getUser().getId();
             socketIOServer.getRoomOperations(room).sendEvent("orderTrigger", notificationDTO);
+            logger.info("Sent orderTrigger notification to room {}: ID={}, Message={}",
+                    room, notificationDTO.getId(), notificationDTO.getMessage());
             broadcastNotificationUpdate(order.getUser().getId());
         } catch (Exception e) {
-            logger.error("Error sending order trigger notification for order ID {}: {}", order.getId(), e.getMessage(), e);
+            logger.error("Error sending orderTrigger notification for order ID {} to room {}: {}",
+                    order.getId(), room, e.getMessage(), e);
         }
     }
 
@@ -376,12 +386,9 @@ public class PendingOrderService {
         }
     }
 
-    public List<NotificationDTO> getUserNotifications(Integer userId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(this::toNotificationDTO)
-                .collect(Collectors.toList());
-    }
+
+
+
 
     @Transactional
     public void markNotificationAsRead(Integer notificationId, Integer userId) {
@@ -423,14 +430,34 @@ public class PendingOrderService {
                 });
     }
 
+
+    public List<NotificationDTO> getUserNotifications(Integer userId) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
+                .stream()
+                .filter(n -> !n.isRead()) // Only unread notifications
+                .map(this::toNotificationDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<NotificationDTO> getAllNotificationsForToday(Integer userId) {
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = startOfDay.plusDays(1);
+        return notificationRepository.findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, startOfDay, endOfDay)
+                .stream()
+                .map(this::toNotificationDTO)
+                .collect(Collectors.toList());
+    }
+
     private void broadcastNotificationUpdate(Integer userId) {
         try {
             List<NotificationDTO> updatedNotifications = getUserNotifications(userId);
             String room = "user-" + userId;
             socketIOServer.getRoomOperations(room).sendEvent("notificationsUpdate", updatedNotifications);
-            logger.debug("Broadcasted notification update to room: {} with {} notifications", room, updatedNotifications.size());
+            logger.info("Broadcasted notificationsUpdate to room {} with {} notifications",
+                    room, updatedNotifications.size());
         } catch (Exception e) {
-            logger.error("Error broadcasting notification update for user {}: {}", userId, e.getMessage(), e);
+            logger.error("Error broadcasting notificationsUpdate for user {} to room {}: {}",
+                    userId, "user-" + userId, e.getMessage(), e);
         }
     }
 

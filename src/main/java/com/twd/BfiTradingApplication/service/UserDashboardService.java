@@ -232,12 +232,30 @@ public class UserDashboardService {
                 .collect(Collectors.toList()));
 
         // 6. Volume par devise (pour graphique)
-        Map<String, BigDecimal> volumeByCurrency = transactions.stream()
-                .collect(Collectors.groupingBy(
-                        t -> t.getDevAchn().getIdentifier(),
-                        Collectors.reducing(BigDecimal.ZERO, Transaction::getMntAcht, BigDecimal::add)
-                ));
+//        Map<String, BigDecimal> volumeByCurrency = transactions.stream()
+//                .collect(Collectors.groupingBy(
+//                        t -> t.getDevAchn().getIdentifier(),
+//                        Collectors.reducing(BigDecimal.ZERO, Transaction::getMntAcht, BigDecimal::add)
+//                ));
+//        stats.setVolumeByCurrency(volumeByCurrency);
+
+        Map<String, BigDecimal> volumeByCurrency = new HashMap<>();
+
+        for (Transaction t : transactions) {
+            // Ajouter le montant d'achat dans sa propre devise
+            String devAcht = t.getDevAchn().getIdentifier();
+            BigDecimal mntAcht = t.getMntAcht();
+            volumeByCurrency.merge(devAcht, mntAcht, BigDecimal::add);
+
+            // Ajouter le montant de vente dans sa propre devise
+            String devVente = t.getDevVen().getIdentifier();
+            BigDecimal mntVente = t.getMntVen();
+            volumeByCurrency.merge(devVente, mntVente, BigDecimal::add);
+        }
+
         stats.setVolumeByCurrency(volumeByCurrency);
+
+
 
         // 7. Nombre de transactions par type (BUY/SELL)
         Map<String, Integer> transactionCountByType = transactions.stream()
