@@ -1,5 +1,6 @@
 package com.twd.BfiTradingApplication.service;
 
+import com.twd.BfiTradingApplication.dto.DailyStatsDTO;
 import com.twd.BfiTradingApplication.entity.CrossParity;
 import com.twd.BfiTradingApplication.entity.DailyStats;
 import com.twd.BfiTradingApplication.entity.Quote;
@@ -10,7 +11,9 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -65,5 +68,21 @@ public class DailyStatsService {
         );
 
         dailyStatsRepository.save(dailyStats);
+    }
+
+
+
+    public List<DailyStatsDTO> getDailyStatsByCrossParityId(Integer crossParityId) {
+        return dailyStatsRepository.findByCrossParityPk(crossParityId)
+                .stream()
+                .map(DailyStatsDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    public List<DailyStatsDTO> getDailyStatsByCrossParityIdAndDate(Integer crossParityId, LocalDate date) {
+        return dailyStatsRepository.findByCrossParityPkAndDate(crossParityId, date)
+                .stream()
+                .map(DailyStatsDTO::new)
+                .collect(Collectors.toList());
     }
 }

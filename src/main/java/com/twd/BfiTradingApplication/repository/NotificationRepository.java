@@ -15,4 +15,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Inte
 
     List<Notification> findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(
             Integer userId, LocalDateTime start, LocalDateTime end);
+
+
+    List<Notification> findByUserIdAndIsReadFalseOrderByCreatedAtDesc(Integer userId);
 }

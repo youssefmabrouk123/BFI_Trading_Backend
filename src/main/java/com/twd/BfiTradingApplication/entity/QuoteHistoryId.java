@@ -5,6 +5,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+
 @Embeddable
 public class QuoteHistoryId implements Serializable {
     private Integer pk;

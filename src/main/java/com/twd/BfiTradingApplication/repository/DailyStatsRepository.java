@@ -29,4 +29,7 @@ public interface DailyStatsRepository extends JpaRepository<DailyStats, Integer>
     List<DailyStats> findByCrossParityPkAndDateBetween(Integer crossParityId, LocalDate startDate, LocalDate endDate);
 
 
+    List<DailyStats> findByCrossParityPk(Integer crossParityId);
+    List<DailyStats> findByCrossParityPkAndDate(Integer crossParityId, LocalDate date);
+
 }

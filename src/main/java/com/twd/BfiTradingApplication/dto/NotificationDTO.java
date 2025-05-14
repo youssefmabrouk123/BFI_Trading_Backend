@@ -10,7 +10,7 @@ public class NotificationDTO {
     private Integer userId;
     private String type;
     private String message;
-    private LocalDateTime createdAt;
+    private String createdAt;
     private boolean isRead;
 
 

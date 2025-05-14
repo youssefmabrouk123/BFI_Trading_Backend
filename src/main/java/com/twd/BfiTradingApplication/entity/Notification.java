@@ -1,5 +1,6 @@
 package com.twd.BfiTradingApplication.entity;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.Data;
 
@@ -20,8 +21,8 @@ public class Notification {
 
     private String type; // e.g., ORDER_TRIGGERED, ORDER_EXECUTED, SYSTEM_ALERT
     private String message;
-    private LocalDateTime createdAt;
-    private boolean isRead;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
+    private LocalDateTime createdAt;    private boolean isRead;
 
     // Constructors, Getters, and Setters
     public Notification() {
@@ -38,3 +39,4 @@ public class Notification {
     }
 
    }
+
